@@ -1,0 +1,107 @@
+{
+ "benchmark_all": {
+  "VCD_MAPE_%": 15.557491985829891,
+  "viability_MAE": 1.5691164491960918,
+  "glucose_MAE": 0.40453812899233216,
+  "lactate_MAE": 0.2156336033511989,
+  "titer_MAPE_%": 9.639184230194983,
+  "titer_d10_APE_%": 8.6070396130705
+ },
+ "benchmark_known": {
+  "VCD_MAPE_%": 9.200671132867058,
+  "viability_MAE": 1.7695285043600388,
+  "glucose_MAE": 0.640305753152106,
+  "lactate_MAE": 0.29765782328857815,
+  "titer_MAPE_%": 9.43547027916112,
+  "titer_d10_APE_%": 10.874220887161135
+ },
+ "benchmark_unseen": {
+  "VCD_MAPE_%": 21.44343722005474,
+  "viability_MAE": 1.3761270627419209,
+  "glucose_MAE": 0.17859415583921537,
+  "lactate_MAE": 0.13360938341381967,
+  "titer_MAPE_%": 9.83535322007944,
+  "titer_d10_APE_%": 6.339858338979865
+ },
+ "band_coverage": {
+  "VCD": 75.47169811320755,
+  "viability": 73.58490566037736,
+  "glucose": 85.1063829787234,
+  "lactate": 76.66666666666667,
+  "titer": 71.69811320754717
+ },
+ "clip_rate": 0.011320754716981131,
+ "direction_checks": [
+  {
+   "check": "Glucose target 4 vs 8 lowers final titer",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Glucose target 4 vs 8 collapses the culture",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Gal+ extends viability under glucose limitation",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Daily feeding gives lower titer than 48 h feeding",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "33 degC shift lowers peak VCD",
+   "ok": true,
+   "evidence": "prior"
+  },
+  {
+   "check": "33 degC shift extends viability",
+   "ok": true,
+   "evidence": "prior"
+  }
+ ],
+ "n_train_runs": 197,
+ "n_real_train_runs": 17,
+ "median_abs_log_correction": 0.11253604761814306,
+ "version": "1.1",
+ "parent": "1.0",
+ "date": "2026-11-01",
+ "trained_after": "D2_STDp_R1",
+ "mechanistic_refit": false,
+ "gate": [
+  {
+   "rule": "Titer error on benchmark not worse by more than 1.0 pt",
+   "ok": true,
+   "value": "9.64% (current 9.66%)"
+  },
+  {
+   "rule": "VCD error on benchmark not worse by more than 2.0 pt",
+   "ok": true,
+   "value": "15.56% (current 14.93%)"
+  },
+  {
+   "rule": "All direction checks pass",
+   "ok": true,
+   "value": "6/6"
+  },
+  {
+   "rule": "Band coverage between 60% and 95%",
+   "ok": true,
+   "value": "76.5%"
+  },
+  {
+   "rule": "ML corrections stay moderate (median below x1.42)",
+   "ok": true,
+   "value": "x1.12"
+  },
+  {
+   "rule": "Few corrections hit the x0.5/x2 limit (below 25%)",
+   "ok": true,
+   "value": "1.1%"
+  }
+ ],
+ "promoted": true
+}

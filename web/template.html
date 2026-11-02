@@ -1,0 +1,938 @@
+<title>CHO Fed-Batch Twin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: instrument console. Left = run plan (day-by-day inputs), right = prediction readout; accuracy evidence below.
+   Accent = phenol red (culture medium indicator); prior = acid-yellow amber; extrapolation = orange. */
+:root {
+  --bg: #F3F4F5; --panel: #FFFFFF; --ink: #1A2027; --ink-2: #47525E; --muted: #78838F; --line: #DFE3E7; --grid: #ECEFF2;
+  --accent: #A3195B; --accent-ink: #8E1450; --comp: #3A6EA8; --real: #5D6773;
+  --good: #2F7D5B; --good-tint: #CFE6DA; --trk-base: #DDE1E5; --prior-tint: #F1DFBF; --prior: #A86A0B; --extra: #C2410C; --edit-bg: #FBEAF1;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111417; --panel: #1A1D21; --ink: #E6E9EC; --ink-2: #AEB6BF; --muted: #838D98; --line: #2B3036; --grid: #23282D;
+  --accent: #E8587E; --accent-ink: #F08AA6; --comp: #5C93D6; --real: #98A2AD;
+  --good: #5FB98E; --good-tint: #24473A; --trk-base: #30363C; --prior-tint: #4A3C1E; --prior: #E0B04A; --extra: #F07B4A; --edit-bg: #3A1A27; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111417; --panel: #1A1D21; --ink: #E6E9EC; --ink-2: #AEB6BF; --muted: #838D98; --line: #2B3036; --grid: #23282D;
+  --accent: #E8587E; --accent-ink: #F08AA6; --comp: #5C93D6; --real: #98A2AD;
+  --good: #5FB98E; --good-tint: #24473A; --trk-base: #30363C; --prior-tint: #4A3C1E; --prior: #E0B04A; --extra: #F07B4A; --edit-bg: #3A1A27; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: 0.005em; }
+h1 { font-size: 1.55rem; }
+h2 { font-size: 1.15rem; }
+.label { font-family: var(--f-display); font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.mono, input, select { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+button, select, input { font-size: 0.85rem; color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; margin-bottom: 16px; }
+.process { color: var(--ink-2); font-size: 0.85rem; }
+.process b { font-weight: 600; color: var(--ink); }
+
+.grid { display: grid; grid-template-columns: minmax(330px, 400px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 960px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+
+/* run plan */
+.plan { display: flex; flex-direction: column; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+select, input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+input[type=number] { width: 5.4em; text-align: right; }
+.recipe-note { color: var(--ink-2); font-size: 0.82rem; margin: 0; }
+.quick { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 0.84rem; color: var(--ink-2); }
+.quick .row { gap: 6px; }
+.btn { font-family: var(--f-body); font-weight: 500; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 11px; cursor: pointer; }
+[hidden] { display: none !important; }
+.btn:hover { border-color: var(--ink-2); }
+.btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 4px 8px; font-size: 0.8rem; }
+.tablewrap { overflow-x: auto; }
+table.days { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+table.days th { font-family: var(--f-display); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+  text-align: right; padding: 4px 4px 6px; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+table.days th:first-child, table.days td:first-child { text-align: left; }
+table.days td { padding: 3px 4px; border-bottom: 1px solid var(--grid); text-align: right; }
+table.days td.day { font-family: var(--f-mono); color: var(--ink-2); }
+table.days input[type=number] { width: 4.2em; padding: 4px 6px; }
+table.days input.edited { background: var(--edit-bg); border-color: var(--accent); }
+table.days td.galcell { text-align: center; }
+.gal { width: 16px; height: 16px; accent-color: var(--accent); }
+.gal.edited { outline: 2px solid var(--accent); outline-offset: 1px; }
+.basis { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.05em; }
+.dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.dot.data { background: var(--good); } .dot.prior { background: var(--prior); } .dot.extrapol { background: var(--extra); }
+.basis.data { color: var(--good); } .basis.prior { color: var(--prior); } .basis.extrapol { color: var(--extra); }
+.legend-basis { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--ink-2); }
+.legend-basis span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* readout */
+.readout { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.kpi { padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-left: 1px solid var(--line); }
+.kpi:first-child { border-left: 0; }
+.kpi .v { font-family: var(--f-mono); font-size: 1.55rem; font-weight: 500; line-height: 1.15; }
+.kpi .v small { font-size: 0.8rem; color: var(--ink-2); font-weight: 400; margin-left: 3px; }
+.kpi .sub { font-size: 0.78rem; color: var(--ink-2); }
+.delta.up { color: var(--good); } .delta.down { color: var(--extra); }
+.kpi.basis-kpi .v { font-size: 1.1rem; font-family: var(--f-body); font-weight: 600; }
+@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi:nth-child(3) { border-left: 0; } .kpi:nth-child(n+3) { border-top: 1px solid var(--line); } }
+
+.charts { display: flex; flex-direction: column; gap: 12px; }
+.chart-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.series-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--ink-2); }
+.series-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 0; border-top: 2px solid; display: inline-block; }
+.sw.band { height: 10px; border: 0; border-radius: 2px; }
+.sw.dash { border-top-style: dashed; }
+.sw.pt { width: 8px; height: 8px; border: 0; border-radius: 50%; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--ink-2); cursor: pointer; }
+.toggle input { accent-color: var(--accent); }
+.chart { position: relative; min-width: 0; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .ctitle { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+.chart .ctitle h3 { font-size: 0.92rem; }
+.chart .ctitle .unit { font-size: 0.76rem; color: var(--muted); font-family: var(--f-mono); }
+.small-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+@media (max-width: 620px) { .small-grid { grid-template-columns: minmax(0, 1fr); } }
+.axis text { fill: var(--muted); font-family: var(--f-mono); font-size: 10.5px; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.baseline { stroke: var(--line); stroke-width: 1; }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+  font-size: 0.76rem; box-shadow: 0 4px 14px rgba(0,0,0,0.12); white-space: nowrap; z-index: 5; }
+.tip b { font-family: var(--f-display); font-weight: 600; }
+.tip .tv { font-family: var(--f-mono); }
+.note { font-size: 0.78rem; color: var(--muted); margin: 0; }
+details.tableview summary { cursor: pointer; font-size: 0.82rem; color: var(--ink-2); }
+details.tableview table { border-collapse: collapse; font-size: 0.78rem; font-family: var(--f-mono); margin-top: 8px; }
+details.tableview th, details.tableview td { padding: 3px 8px; text-align: right; border-bottom: 1px solid var(--grid); }
+details.tableview th { font-family: var(--f-display); font-weight: 500; color: var(--muted); }
+
+/* accuracy */
+section.acc { margin-top: 16px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 960px) { section.acc { grid-template-columns: minmax(0, 1fr); } }
+.acc-intro { color: var(--ink-2); margin: 6px 0 12px; max-width: 62ch; }
+.stats { display: grid; grid-template-columns: auto repeat(2, minmax(0, 1fr)); gap: 0; font-size: 0.84rem; }
+.stats > div { padding: 7px 8px; border-bottom: 1px solid var(--grid); }
+.stats .h { font-family: var(--f-display); font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stats .n { font-family: var(--f-mono); text-align: right; }
+.stats .h.r { text-align: right; }
+.knows { margin: 12px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 0.84rem; display: flex; flex-direction: column; gap: 4px; max-width: 70ch; }
+.fit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin-top: 10px; }
+@media (max-width: 520px) { .fit-grid { grid-template-columns: minmax(0, 1fr); } }
+footer { margin-top: 18px; font-size: 0.76rem; color: var(--muted); }
+
+/* sliders */
+.editor { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.ed-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ed-day { display: flex; align-items: center; gap: 6px; }
+.ed-day h3 { font-size: 1.05rem; min-width: 3.6em; text-align: center; }
+.icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 0.9rem; color: var(--ink-2); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--panel); padding: 5px 10px; font-size: 0.78rem; cursor: pointer; color: var(--ink-2); font-family: var(--f-body); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.sl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+.sl label { font-size: 0.86rem; font-weight: 500; }
+.sl .val { font-family: var(--f-mono); font-size: 0.86rem; color: var(--accent-ink); text-align: right; }
+.sl .meta { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); gap: 8px; }
+.sl .meta .was { color: var(--accent-ink); }
+.sl input[type=range] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; -webkit-appearance: none; appearance: none; height: 22px; background: transparent; cursor: pointer; }
+.sl input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--trk); }
+.sl input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--trk); }
+.sl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.sl input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
+.sl input[type=range]:focus-visible { outline: none; }
+.sl input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.86rem; font-weight: 500; }
+.switch input { width: 36px; height: 20px; accent-color: var(--accent); }
+.seeds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+table.days tbody tr { cursor: pointer; }
+table.days tbody tr:hover td { background: var(--grid); }
+table.days tbody tr.sel td { background: var(--edit-bg); }
+table.days tbody tr.sel td.day { color: var(--accent-ink); font-weight: 600; }
+table.days td.v { font-family: var(--f-mono); }
+table.days td.v.edited { color: var(--accent-ink); font-weight: 600; }
+table.days td.v.off { color: var(--muted); }
+
+/* platform navigation + views */
+nav.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+nav.tabs a { padding: 9px 14px; color: var(--ink-2); text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+nav.tabs a:hover { color: var(--ink); }
+nav.tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.count { font-family: var(--f-mono); font-size: 0.72rem; background: var(--prior); color: var(--panel); border-radius: 9px; padding: 0 6px; }
+.grid2 { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 960px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; border: 1.5px dashed var(--line); border-radius: 8px; padding: 22px 12px; cursor: pointer; color: var(--ink-2); background: var(--bg); }
+.drop:hover, .drop.over { border-color: var(--accent); color: var(--ink); }
+.drop b { color: var(--accent-ink); }
+textarea { width: 100%; font-family: var(--f-mono); font-size: 0.78rem; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+pre.tpl { font-family: var(--f-mono); font-size: 0.74rem; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; overflow-x: auto; margin: 6px 0; }
+table.fmt { border-collapse: collapse; font-size: 0.78rem; width: 100%; }
+table.fmt td { padding: 3px 6px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+table.fmt td:first-child { font-family: var(--f-mono); white-space: nowrap; }
+.msgs { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 0.84rem; }
+.msgs li { display: flex; gap: 8px; align-items: baseline; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-family: var(--f-display); font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 4px; padding: 1px 7px; border: 1px solid currentColor; white-space: nowrap; }
+.chip.ok { color: var(--good); } .chip.warn { color: var(--prior); } .chip.err { color: var(--extra); } .chip.info { color: var(--ink-2); }
+.empty { color: var(--muted); text-align: center; padding: 40px 16px; }
+.pf-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+.pf-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; }
+.pf-nums > div { padding: 10px 12px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pf-nums > div:first-child { border-left: 0; }
+.pf-nums .v { font-family: var(--f-mono); font-size: 1.2rem; }
+.pf-nums .sub { font-size: 0.74rem; color: var(--muted); }
+@media (max-width: 620px) { .pf-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pf-nums > div:nth-child(3) { border-left: 0; } .pf-nums > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+table.log { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+table.log th { font-family: var(--f-display); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.log td { padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+table.log td.n { font-family: var(--f-mono); text-align: right; white-space: nowrap; }
+table.log th.n { text-align: right; }
+.callout { border: 1px solid var(--line); border-left: 3px solid var(--prior); border-radius: 6px; padding: 10px 12px; font-size: 0.84rem; color: var(--ink-2); background: var(--bg); }
+.callout code, .note code { font-family: var(--f-mono); font-size: 0.8rem; color: var(--ink); }
+.ver { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.ver .big { font-family: var(--f-mono); font-size: 2rem; font-weight: 500; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.84rem; }
+.checks li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; }
+.checks .val { font-family: var(--f-mono); font-size: 0.78rem; color: var(--ink-2); text-align: right; }
+.mark { font-weight: 700; }
+.mark.ok { color: var(--good); } .mark.no { color: var(--extra); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="label">Bioprocess digital twin · MVP</div>
+      <h1>CHO Fed-Batch Twin</h1>
+    </div>
+    <div class="process"><b>NISTCHO</b> mAb (IgG1κ) · 20 mL fed-batch, 37 °C · hybrid model <b id="modelBadge">1.0</b></div>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#plan" id="tab-plan">Plan a run</a>
+    <a href="#batches" id="tab-batches">Batches <span class="count" id="pendingCount" hidden></span></a>
+    <a href="#model" id="tab-model">Model</a>
+  </nav>
+  <div id="view-plan">
+
+  <div class="grid">
+    <!-- RUN PLAN -->
+    <aside class="panel plan" aria-label="Run plan">
+      <div class="row" style="justify-content:space-between">
+        <h2>Run plan</h2>
+        <span class="label">11-day culture</span>
+      </div>
+      <div class="field">
+        <label class="label" for="recipe">Start from a real feeding strategy</label>
+        <select id="recipe"></select>
+        <p class="recipe-note" id="recipeNote"></p>
+      </div>
+
+      <div class="editor" aria-label="Edit inputs">
+        <div class="ed-head">
+          <div class="ed-day">
+            <button class="icon-btn" id="prevDay" aria-label="Previous day">&#8592;</button>
+            <h3 id="edDay">Day 5</h3>
+            <button class="icon-btn" id="nextDay" aria-label="Next day">&#8594;</button>
+          </div>
+          <div class="seg" role="group" aria-label="Apply changes to">
+            <button id="scopeOne" aria-pressed="false">This day</button>
+            <button id="scopeOn" aria-pressed="true">This day onward</button>
+          </div>
+        </div>
+        <div class="sl">
+          <label for="slFeed">Feed volume</label><span class="val" id="vFeed"></span>
+          <input type="range" id="slFeed" min="0" max="10" step="0.5">
+          <div class="meta"><span>0 = no feed · real runs used 2.5–5% v/v</span><span class="was" id="wFeed"></span></div>
+        </div>
+        <div class="sl">
+          <label for="slGlc">Glucose top-up to</label><span class="val" id="vGlc"></span>
+          <input type="range" id="slGlc" min="0" max="10" step="0.5">
+          <div class="meta"><span>0 = no top-up · real runs used 2–8 g/L</span><span class="was" id="wGlc"></span></div>
+        </div>
+        <div class="sl">
+          <label for="slT">Temperature</label><span class="val" id="vT"></span>
+          <input type="range" id="slT" min="30" max="38" step="0.5">
+          <div class="meta"><span>real runs: 37 °C only · other values use literature</span><span class="was" id="wT"></span></div>
+        </div>
+        <label class="switch" for="swGal"><span>Galactose + Mn²⁺ (Gal+) with this feed</span><input type="checkbox" id="swGal"></label>
+        <p class="note" id="scopeNote" style="margin:0"></p>
+      </div>
+
+      <div>
+        <div class="tablewrap">
+          <table class="days" aria-label="Inputs per day (click a row to edit)">
+            <thead><tr><th>Day</th><th>Feed<br>% v/v</th><th>Glucose<br>to g/L</th><th>Gal+</th><th>Temp<br>°C</th><th>Basis</th></tr></thead>
+            <tbody id="dayRows"></tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:6px">Click a day to edit it. Inputs act at the start of each day, after the morning sample. Edited values are shown in colour.</p>
+      </div>
+      <div class="legend-basis" aria-label="Basis legend">
+        <span><i class="dot data"></i>Within real data</span>
+        <span><i class="dot prior"></i>Literature prior (temperature)</span>
+        <span><i class="dot extrapol"></i>Outside tested range</span>
+      </div>
+      <div class="seeds" aria-label="Start of culture">
+        <div class="sl"><label for="slSeedX">Seed VCD</label><span class="val" id="vSeedX"></span>
+          <input type="range" id="slSeedX" min="0.2" max="0.8" step="0.02" value="0.4"><div class="meta"><span>10⁶ cells/mL</span></div></div>
+        <div class="sl"><label for="slSeedV">Seed viability</label><span class="val" id="vSeedV"></span>
+          <input type="range" id="slSeedV" min="90" max="100" step="0.5" value="97.5"><div class="meta"><span>%</span></div></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="reset">Reset to recipe</button>
+        <button class="btn primary" id="pin">Keep as comparison</button>
+        <button class="btn" id="unpin" hidden>Clear comparison</button>
+      </div>
+    </aside>
+
+    <!-- READOUT -->
+    <main class="readout" aria-label="Prediction">
+      <div class="kpis" id="kpis"></div>
+      <div class="panel charts">
+        <div class="chart-head">
+          <div class="series-legend" id="seriesLegend"></div>
+          <label class="toggle"><input type="checkbox" id="showReal" checked> Real runs of this recipe</label>
+        </div>
+        <div class="chart" id="ch-titer"></div>
+        <div class="small-grid">
+          <div class="chart" id="ch-VCD"></div>
+          <div class="chart" id="ch-viability"></div>
+          <div class="chart" id="ch-glucose"></div>
+          <div class="chart" id="ch-lactate"></div>
+        </div>
+        <p class="note">Bands show the 80% range, calibrated on real runs the model never trained on; they widen the further ahead the twin predicts. Glucose is shown as sampled, before that day's feed.</p>
+        <details class="tableview"><summary>Daily values as a table</summary><div class="tablewrap" id="valTable"></div></details>
+      </div>
+    </main>
+  </div>
+
+  </div><!-- /view-plan -->
+
+  <!-- BATCHES -->
+  <div id="view-batches" hidden>
+    <div class="grid2">
+      <section class="panel stack" aria-label="Import a batch">
+        <div><h2>Import a batch</h2>
+          <p class="note" style="margin-top:4px">One CSV per culture. The twin checks it and predicts it from day 0 before anything is saved, so you see how well the current model would have done. Nothing leaves your browser while you check.</p></div>
+        <label class="drop" id="drop" for="file"><span>Drop a CSV file here</span><span>or <b>choose a file</b></span>
+          <input type="file" id="file" accept=".csv,text/csv,text/plain" hidden></label>
+        <div class="row">
+          <select id="exampleSel" aria-label="Load an example batch"><option value="">Load a real example run…</option></select>
+          <button class="btn small" id="pasteToggle">Paste text</button>
+        </div>
+        <div id="pasteBox" hidden class="stack" style="gap:8px">
+          <textarea id="pasteArea" rows="8" aria-label="Batch CSV text" placeholder="time_h,VCD,viability,glucose,lactate,titer,feed_pct,glucose_target,galplus,temperature"></textarea>
+          <button class="btn small" id="pasteGo">Check pasted data</button>
+        </div>
+        <details><summary class="label" style="cursor:pointer">File format</summary>
+          <table class="fmt" style="margin-top:8px">
+            <tr><td>time_h</td><td>hours since inoculation, first row 0</td></tr>
+            <tr><td>VCD</td><td>viable cells, 10⁶ cells/mL (row 0 required)</td></tr>
+            <tr><td>viability</td><td>%</td></tr>
+            <tr><td>glucose, lactate</td><td>g/L, measured before that day's feed</td></tr>
+            <tr><td>titer</td><td>mg/L</td></tr>
+            <tr><td>feed_pct</td><td>feed added right after this sample, % v/v (0 = none)</td></tr>
+            <tr><td>glucose_target</td><td>glucose topped up to, g/L (blank = none)</td></tr>
+            <tr><td>galplus</td><td>1 if galactose + Mn²⁺ added with this feed</td></tr>
+            <tr><td>temperature</td><td>°C from this sample to the next</td></tr>
+          </table>
+          <p class="note" style="margin:6px 0 0">Blank cells mean not measured. Optional first lines: <code># batch_id:</code>, <code># recipe:</code>, <code># note:</code></p>
+          <pre class="tpl" id="tplText"></pre>
+          <button class="btn small" id="copyTpl">Copy template</button>
+        </details>
+      </section>
+
+      <section class="panel stack" id="checkPanel" aria-label="Check result">
+        <div class="empty" id="checkEmpty">Choose a file or load an example run to check it.<br>Nothing is saved until you press Save.</div>
+        <div id="checkBody" hidden class="stack">
+          <div class="pf-head"><h2 id="pfTitle">Batch</h2><span class="note" id="pfMeta"></span></div>
+          <ul class="msgs" id="pfMsgs"></ul>
+          <div id="pfResult" class="stack">
+            <div><div class="label">Predicted first, with model <span id="pfModel"></span></div></div>
+            <div class="pf-nums" id="pfNums"></div>
+            <div class="small-grid">
+              <div class="chart" id="pf-titer"></div><div class="chart" id="pf-VCD"></div>
+              <div class="chart" id="pf-viability"></div><div class="chart" id="pf-glucose"></div>
+            </div>
+            <p class="note">Line and band: the twin's forecast from day 0 using only this batch's inputs. Points: what was measured.</p>
+          </div>
+          <div class="row">
+            <button class="btn primary" id="saveBatch">Save batch for retraining</button>
+            <span class="note" id="saveMsg" role="status"></span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel stack" style="margin-top:16px" aria-label="Batch log">
+      <div class="row" style="justify-content:space-between"><h2>Batch log</h2><span class="note" id="logNote"></span></div>
+      <div class="tablewrap"><table class="log" id="batchLog"></table></div>
+      <div class="callout" id="retrainNote"></div>
+    </section>
+  </div>
+
+  <!-- MODEL -->
+  <div id="view-model" hidden>
+    <div class="grid2">
+      <section class="panel stack" aria-label="Current model">
+        <div class="label">Current model</div>
+        <div class="ver"><span class="big" id="mvBig"></span><span class="note" id="mvDate"></span></div>
+        <p class="note" style="margin:0" id="mvTrained"></p>
+        <div>
+          <div class="label" style="margin-bottom:6px">Promotion checks for this version</div>
+          <ul class="checks" id="gateList"></ul>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:6px">Direction checks</div>
+          <ul class="checks" id="dirList"></ul>
+        </div>
+      </section>
+      <section class="panel stack" aria-label="Version history">
+        <div class="row" style="justify-content:space-between"><h2>Version history</h2><span class="note">every new batch makes a candidate; it replaces the current model only if it passes the checks</span></div>
+        <div class="chart" id="histChart"></div>
+        <div class="tablewrap"><table class="log" id="histTable"></table></div>
+      </section>
+    </div>
+
+    <section class="acc" aria-label="Model accuracy">
+      <div class="panel">
+        <h2>How accurate is it?</h2>
+        <p class="acc-intro">Six real runs are kept out of training for good. Each one is predicted from day 0 using only its inputs, the same way a plan is predicted.</p>
+        <div class="stats" id="stats"></div>
+        <ul class="knows" id="knows"></ul>
+      </div>
+      <div class="panel">
+        <div class="row" style="justify-content:space-between">
+          <h2>Prediction vs measured</h2>
+          <select id="fitRun" aria-label="Benchmark run"></select>
+        </div>
+        <div class="fit-grid">
+          <div class="chart" id="fit-titer"></div>
+          <div class="chart" id="fit-VCD"></div>
+        </div>
+        <p class="note" style="margin-top:8px">Line: twin prediction from day 0. Points: measured values.</p>
+      </div>
+    </section>
+  </div>
+  <footer id="footer">Mechanistic mass balances with machine-learned rate corrections · predictions are model-based and labelled by their basis.</footer>
+</div>
+
+<script>window.MODEL = /*MODEL_JSON*/;</script>
+<script>/*TWIN_JS*/</script>
+<script>
+(function () {
+  "use strict";
+  const M = window.MODEL, T = window.Twin;
+  const DAYS = 11;
+  const NOTES = {
+    "STD": "Feed 5% every 48 h from day 3, glucose topped up to 8 g/L. Highest real titers.",
+    "STD+": "As STD, plus galactose and Mn²⁺ with every other feed.",
+    "LoG": "Feed 5% every 48 h, glucose only to 4 g/L. Real cultures collapsed after glucose ran out.",
+    "LoG+": "As LoG, plus galactose. Galactose bridges part of the glucose gap.",
+    "HiF": "Feed 2.5% every day from day 3, glucose to 4 g/L.",
+    "HIP": "Feed 2.5% every day, glucose to 2 g/L only when depleted (HIPDOG-like).",
+    "HIP+": "As HIP, plus galactose. Never used for training: the model's unseen test recipe."
+  };
+  const VARS = {
+    titer: { name: "Titer", unit: "g/L", scale: 0.001, dec: 2 },
+    VCD: { name: "Viable cell density", unit: "10⁶ cells/mL", scale: 1, dec: 1 },
+    viability: { name: "Viability", unit: "%", scale: 1, dec: 1, max: 100 },
+    glucose: { name: "Glucose", unit: "g/L", scale: 1, dec: 2 },
+    lactate: { name: "Lactate", unit: "g/L", scale: 1, dec: 2 }
+  };
+  const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const $ = id => document.getElementById(id);
+
+  let recipe = "STD", steps = T.protocol(recipe, DAYS), base = T.protocol(recipe, DAYS), comp = null, result = null;
+
+  // ------------------------------------------------ run plan UI (slider editor for the selected day + read-only day table)
+  Object.keys(T.RECIPES).forEach(r => { const o = document.createElement("option"); o.value = r; o.textContent = r; $("recipe").appendChild(o); });
+  $("recipe").value = recipe;
+  let sel = 5, scope = "on";
+  const TESTED = { slFeed: [[0, 5, "good"]], slGlc: [[0, 0, "good"], [2, 8, "good"]], slT: [[30, 36.75, "prior"], [36.75, 37.25, "good"], [37.25, 38, "prior"]],
+    slSeedX: [[0.18, 0.43, "good"]], slSeedV: [[94, 99.5, "good"]] };
+  function paintTrack(id) {
+    const el = $(id), lo = +el.min, hi = +el.max, segs = TESTED[id] || [];
+    const pct = v => (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo) * 100;
+    let stops = [], cur = 0;
+    segs.forEach(([a, b, k]) => { const pa = pct(a), pb = Math.max(pct(b), pa + 1.2); stops.push(`var(--trk-base) ${cur}% ${pa}%`, `var(--${k}-tint) ${pa}% ${pb}%`); cur = pb; });
+    stops.push(`var(--trk-base) ${cur}% 100%`);
+    el.style.setProperty("--trk", `linear-gradient(to right, ${stops.join(", ")})`);
+  }
+  Object.keys(TESTED).forEach(paintTrack);
+
+  function eq(a, b) { return (a == null || a === "" ? null : +a) === (b == null || b === "" ? null : +b); }
+  function buildRows() {
+    const tb = $("dayRows"); tb.innerHTML = "";
+    steps.forEach((s, d) => {
+      const tr = document.createElement("tr"); tr.id = "r" + d; tr.tabIndex = 0;
+      tr.innerHTML = `<td class="day">${d}</td><td class="v" id="cf${d}"></td><td class="v" id="cg${d}"></td><td class="v" id="ca${d}" style="text-align:center"></td><td class="v" id="ct${d}"></td><td><span class="basis" id="b${d}"></span></td>`;
+      tr.addEventListener("click", () => selectDay(d));
+      tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectDay(d); } });
+      tb.appendChild(tr);
+    });
+  }
+  function fillRows() {
+    steps.forEach((s, d) => {
+      const b = base[d];
+      const set = (id, txt, edited, off) => { const c = $(id); c.textContent = txt; c.classList.toggle("edited", edited); c.classList.toggle("off", !!off && !edited); };
+      set("cf" + d, s.feed_pct ? (+s.feed_pct).toFixed(1) : "–", !eq(s.feed_pct, b.feed_pct), !s.feed_pct);
+      set("cg" + d, s.glucose_target == null ? "–" : (+s.glucose_target).toFixed(1), !eq(s.glucose_target, b.glucose_target), s.glucose_target == null);
+      set("ca" + d, s.galplus ? "✓" : "–", !!s.galplus !== !!b.galplus, !s.galplus);
+      set("ct" + d, (+s.temperature).toFixed(1), !eq(s.temperature, b.temperature), false);
+      $("r" + d).classList.toggle("sel", d === sel);
+    });
+  }
+  function syncEditor() {
+    const s = steps[sel], b = base[sel];
+    $("edDay").textContent = "Day " + sel; $("prevDay").disabled = sel === 0; $("nextDay").disabled = sel === DAYS - 1;
+    $("slFeed").value = s.feed_pct || 0; $("slGlc").value = s.glucose_target == null ? 0 : s.glucose_target; $("slT").value = s.temperature; $("swGal").checked = !!s.galplus;
+    showVals();
+    $("wFeed").textContent = eq(s.feed_pct, b.feed_pct) ? "" : "recipe: " + (b.feed_pct ? b.feed_pct + "%" : "no feed");
+    $("wGlc").textContent = eq(s.glucose_target, b.glucose_target) ? "" : "recipe: " + (b.glucose_target == null ? "no top-up" : b.glucose_target + " g/L");
+    $("wT").textContent = eq(s.temperature, b.temperature) ? "" : "recipe: " + b.temperature + " °C";
+    $("scopeOne").textContent = `Day ${sel} only`; $("scopeOn").textContent = `Day ${sel} onward`;
+    $("scopeNote").textContent = scope === "on"
+      ? `Changes apply from day ${sel} to day ${DAYS - 1}. Feed, glucose and Gal+ change only on days that already feed; temperature changes on every day.`
+      : `Changes apply to day ${sel} only.`;
+  }
+  function showVals() {
+    const f = +$("slFeed").value, g = +$("slGlc").value, tt = +$("slT").value;
+    $("vFeed").textContent = f ? f.toFixed(1) + " % v/v" : "no feed";
+    $("vGlc").textContent = g ? g.toFixed(1) + " g/L" : "no top-up";
+    $("vT").textContent = tt.toFixed(1) + " °C";
+    $("vSeedX").textContent = (+$("slSeedX").value).toFixed(2); $("vSeedV").textContent = (+$("slSeedV").value).toFixed(1) + " %";
+  }
+  function selectDay(d) { sel = Math.min(Math.max(d, 0), DAYS - 1); fillRows(); syncEditor(); }
+  function applyEdit(field) {
+    const f = +$("slFeed").value, g = +$("slGlc").value, tt = +$("slT").value, ga = $("swGal").checked;
+    const targets = scope === "on" ? steps.map((_, d) => d).filter(d => d >= sel) : [sel];
+    targets.forEach(d => {
+      const s = steps[d], isSel = d === sel;
+      if (field === "T") s.temperature = tt;
+      if (field === "feed" && (isSel || s.feed_pct > 0)) { s.feed_pct = f; if (!f) { s.glucose_target = null; s.galplus = false; } }
+      if (field === "glc" && (isSel || s.feed_pct > 0)) s.glucose_target = g ? g : null;
+      if (field === "gal" && (isSel || s.feed_pct > 0)) s.galplus = ga;
+    });
+    showVals(); fillRows(); syncEditor(); run();
+  }
+  $("slFeed").addEventListener("input", () => applyEdit("feed"));
+  $("slGlc").addEventListener("input", () => applyEdit("glc"));
+  $("slT").addEventListener("input", () => applyEdit("T"));
+  $("swGal").addEventListener("change", () => applyEdit("gal"));
+  $("prevDay").addEventListener("click", () => selectDay(sel - 1));
+  $("nextDay").addEventListener("click", () => selectDay(sel + 1));
+  function setScope(s) { scope = s; $("scopeOne").setAttribute("aria-pressed", s === "one"); $("scopeOn").setAttribute("aria-pressed", s === "on"); syncEditor(); }
+  $("scopeOne").addEventListener("click", () => setScope("one"));
+  $("scopeOn").addEventListener("click", () => setScope("on"));
+  function setRecipe(r) {
+    recipe = r; base = T.protocol(r, DAYS); steps = T.protocol(r, DAYS); $("recipeNote").textContent = NOTES[r];
+    fillRows(); syncEditor(); run();
+  }
+  $("recipe").addEventListener("change", e => setRecipe(e.target.value));
+  $("reset").addEventListener("click", () => setRecipe(recipe));
+  ["slSeedX", "slSeedV"].forEach(id => $(id).addEventListener("input", () => { showVals(); run(); }));
+  $("pin").addEventListener("click", () => { comp = { label: compLabel(), res: result }; $("unpin").hidden = false; render(); });
+  $("unpin").addEventListener("click", () => { comp = null; $("unpin").hidden = true; render(); });
+  $("showReal").addEventListener("change", render);
+  function compLabel() {
+    const edited = steps.some((s, d) => !eq(s.feed_pct, base[d].feed_pct) || !eq(s.glucose_target, base[d].glucose_target) || !!s.galplus !== !!base[d].galplus || !eq(s.temperature, base[d].temperature));
+    return edited ? recipe + " (edited)" : recipe;
+  }
+  function clampNum(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+
+  // ------------------------------------------------ simulate + render
+  function run() {
+    const init = { VCD: +$("slSeedX").value, viability: +$("slSeedV").value, glucose: 8.0 };
+    result = T.simulate(M, steps, init);
+    result.support.forEach((s, d) => {
+      const el = $("b" + d); el.className = "basis " + s;
+      el.innerHTML = `<i class="dot ${s}"></i>${s === "data" ? "data" : s === "prior" ? "prior" : "extrap."}`;
+      el.title = s === "data" ? "Inputs within the real runs" : s === "prior" ? "Temperature effect from literature, not D2 data" : "Feed or glucose outside the tested range";
+    });
+    render();
+  }
+  const fmt = (v, dec) => (v == null || isNaN(v)) ? "–" : v.toFixed(dec);
+  function render() {
+    const k = result.kpi, last = result.rows[result.rows.length - 1];
+    let delta = "";
+    if (comp) {
+      const dv = (k.titer / comp.res.kpi.titer - 1) * 100;
+      delta = `<span class="delta ${dv >= 0 ? "up" : "down"}">${dv >= 0 ? "+" : ""}${dv.toFixed(0)}% vs ${comp.label}</span>`;
+    }
+    const nd = result.support.length;
+    const basisTxt = k.nExtrapol ? `${k.nExtrapol} day${k.nExtrapol > 1 ? "s" : ""} outside tested range` : k.nPrior ? `${k.nPrior} day${k.nPrior > 1 ? "s" : ""} use temperature prior` : `All ${nd} days within real data`;
+    const basisCls = k.nExtrapol ? "extrapol" : k.nPrior ? "prior" : "data";
+    $("kpis").innerHTML = `
+      <div class="kpi"><span class="label">Final titer · day 11</span><span class="v">${fmt(k.titer / 1000, 2)}<small>g/L</small></span>
+        <span class="sub">range ${fmt(k.titer_lo / 1000, 2)}–${fmt(k.titer_hi / 1000, 2)}${delta ? " · " + delta : ""}</span></div>
+      <div class="kpi"><span class="label">Peak VCD</span><span class="v">${fmt(k.peakVCD, 1)}<small>10⁶/mL</small></span>
+        <span class="sub">IVCD ${fmt(k.ivcd, 0)} 10⁶ cell·d/mL</span></div>
+      <div class="kpi"><span class="label">Viability · day 11</span><span class="v">${fmt(k.viability, 0)}<small>%</small></span>
+        <span class="sub">range ${fmt(k.viability_lo, 0)}–${fmt(k.viability_hi, 0)}%</span></div>
+      <div class="kpi basis-kpi"><span class="label">Basis of this prediction</span>
+        <span class="v basis ${basisCls}" style="text-transform:none;letter-spacing:0;font-size:1rem"><i class="dot ${basisCls}"></i>${basisTxt}</span>
+        <span class="sub">${k.nData} of ${nd} days within real data</span></div>`;
+    const showReal = $("showReal").checked && (M.real[recipe] || []).length;
+    $("seriesLegend").innerHTML = `<span><i class="sw" style="border-color:var(--accent)"></i>This plan</span>
+      <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range</span>
+      ${comp ? `<span><i class="sw dash" style="border-color:var(--comp)"></i>${comp.label}</span>` : ""}
+      ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Real runs · ${recipe}</span>` : ""}`;
+    drawChart($("ch-titer"), "titer", 250);
+    ["VCD", "viability", "glucose", "lactate"].forEach(v => drawChart($("ch-" + v), v, 170));
+    // table view
+    let h = "<table><thead><tr><th>Day</th>" + Object.keys(VARS).map(v => `<th>${VARS[v].name} (${VARS[v].unit})</th>`).join("") + "</tr></thead><tbody>";
+    result.rows.forEach(r => { h += `<tr><td>${r.day}</td>` + Object.keys(VARS).map(v => `<td>${fmt(r[v] * VARS[v].scale, VARS[v].dec)}</td>`).join("") + "</tr>"; });
+    $("valTable").innerHTML = h + "</tbody></table>";
+  }
+
+  // ------------------------------------------------ SVG line chart with band, comparison, real points and hover
+  function niceMax(v) { if (v <= 0) return 1; const e = Math.pow(10, Math.floor(Math.log10(v))); const m = v / e; const c = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].find(q => m <= q + 1e-9); return c * e; }
+  function svgEl(tag, attrs) { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const a in attrs) e.setAttribute(a, attrs[a]); return e; }
+
+  function lineChart(host, opt) {
+    // opt: {title, unit, height, xmax, series:[{type:'band'|'line'|'dash'|'pts', xs, ys, lo, hi, color, label}], dec, ymaxCap}
+    host.innerHTML = "";
+    const head = document.createElement("div"); head.className = "ctitle";
+    head.innerHTML = `<h3>${opt.title}</h3><span class="unit">${opt.unit}</span>`; host.appendChild(head);
+    const W = Math.max(host.clientWidth, 260), H = opt.height, pl = 40, pr = 10, pt = 8, pb = 22;
+    let ymax = 0;
+    opt.series.forEach(s => (s.hi || s.ys).forEach(v => { if (v != null && isFinite(v)) ymax = Math.max(ymax, v); }));
+    ymax = opt.ymaxCap ? Math.min(niceMax(ymax * 1.05), opt.ymaxCap) : niceMax(ymax * 1.05);
+    const x = v => pl + (W - pl - pr) * v / opt.xmax, y = v => pt + (H - pt - pb) * (1 - Math.min(v, ymax) / ymax);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": opt.title + " over culture days" });
+    const ax = svgEl("g", { class: "axis" });
+    for (let i = 0; i <= 4; i++) {
+      const v = ymax * i / 4, yy = y(v);
+      ax.appendChild(svgEl("line", { x1: pl, x2: W - pr, y1: yy, y2: yy, class: i === 0 ? "baseline" : "gridline" }));
+      const t = svgEl("text", { x: pl - 6, y: yy + 3.5, "text-anchor": "end" }); t.textContent = +v.toFixed(opt.dec > 1 ? 2 : 1) + ""; ax.appendChild(t);
+    }
+    for (let d = 0; d <= opt.xmax; d += 1) {
+      if (!opt.xlabels && d % 2 && opt.xmax > 6) continue;
+      const t = svgEl("text", { x: x(d), y: H - 6, "text-anchor": "middle" }); t.textContent = opt.xlabels ? opt.xlabels[d] : (d === 0 ? "day 0" : d); ax.appendChild(t);
+    }
+    svg.appendChild(ax);
+    const path = (xs, ys) => xs.map((xv, i) => ys[i] == null ? null : `${x(xv)},${y(ys[i])}`).filter(Boolean).join(" L");
+    opt.series.forEach(s => {
+      if (s.type === "band") {
+        const top = s.xs.map((xv, i) => `${x(xv)},${y(s.hi[i])}`).join(" L"), bot = s.xs.map((xv, i) => `${x(xv)},${y(s.lo[i])}`).reverse().join(" L");
+        svg.appendChild(svgEl("path", { d: `M${top} L${bot} Z`, fill: s.color, "fill-opacity": 0.16, stroke: "none" }));
+      } else if (s.type === "line" || s.type === "dash") {
+        svg.appendChild(svgEl("path", { d: "M" + path(s.xs, s.ys), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round",
+          "stroke-dasharray": s.type === "dash" ? "5 4" : "none" }));
+      } else if (s.type === "pts") {
+        s.xs.forEach((xv, i) => { if (s.ys[i] != null) svg.appendChild(svgEl("circle", { cx: x(xv), cy: y(s.ys[i]), r: 3, fill: s.color, "fill-opacity": 0.75, stroke: cssv("--panel"), "stroke-width": 1 })); });
+      }
+    });
+    const main = opt.series.find(s => s.type === "line");
+    if (main) { const i = main.xs.length - 1; svg.appendChild(svgEl("circle", { cx: x(main.xs[i]), cy: y(main.ys[i]), r: 4, fill: main.color, stroke: cssv("--panel"), "stroke-width": 2 })); }
+    // hover
+    const cross = svgEl("line", { y1: pt, y2: H - pb, stroke: cssv("--muted"), "stroke-width": 1, "stroke-dasharray": "2 3", visibility: "hidden" });
+    svg.appendChild(cross);
+    const hit = svgEl("rect", { x: pl, y: pt, width: W - pl - pr, height: H - pt - pb, fill: "transparent" }); svg.appendChild(hit);
+    host.appendChild(svg);
+    const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; host.appendChild(tip);
+    function move(ev) {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      const d = Math.round(Math.min(Math.max((px - pl) / (W - pl - pr) * opt.xmax, 0), opt.xmax));
+      cross.setAttribute("x1", x(d)); cross.setAttribute("x2", x(d)); cross.setAttribute("visibility", "visible");
+      let html = `<b>${opt.xlabels ? opt.xname + " " + opt.xlabels[d] : "Day " + d}</b>`;
+      opt.series.forEach(s => {
+        if (s.type === "band" || s.type === "pts") return;
+        const i = s.xs.findIndex(v => Math.abs(v - d) < 0.5); if (i < 0) return;
+        const band = s.band ? ` <span style="color:var(--muted)">(${s.band.lo[i].toFixed(opt.dec)}–${s.band.hi[i].toFixed(opt.dec)})</span>` : "";
+        html += `<div><span style="color:${s.color}">●</span> ${s.label}: <span class="tv">${s.ys[i].toFixed(opt.dec)}</span>${band}</div>`;
+      });
+      const realHere = opt.series.filter(s => s.type === "pts").flatMap(s => s.xs.map((v, i) => [v, s.ys[i]]).filter(p => p[1] != null && Math.abs(p[0] - d) < 0.5).map(p => p[1]));
+      if (realHere.length) html += `<div><span style="color:${cssv("--real")}">●</span> Real: <span class="tv">${realHere.map(v => v.toFixed(opt.dec)).join(", ")}</span></div>`;
+      tip.innerHTML = html; tip.hidden = false;
+      const hx = x(d) * r.width / W; const tw = tip.offsetWidth;
+      tip.style.left = Math.min(Math.max(hx + 12, 0), host.clientWidth - tw) + "px";
+      tip.style.top = (head.offsetHeight + 4) + "px";
+    }
+    hit.addEventListener("mousemove", move); hit.addEventListener("touchstart", e => move(e.touches[0]), { passive: true });
+    hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
+  }
+
+  function drawChart(host, v) {
+    const cfg = VARS[v], sc = cfg.scale, rows = result.rows, xs = rows.map(r => r.day);
+    const lo = rows.map(r => r[v + "_lo"] * sc), hi = rows.map(r => r[v + "_hi"] * sc), ys = rows.map(r => r[v] * sc);
+    const series = [{ type: "band", xs, lo, hi, color: cssv("--accent") }];
+    if ($("showReal").checked) (M.real[recipe] || []).forEach(rr => series.push({ type: "pts", xs: rr.day, ys: rr[v].map(q => q == null ? null : q * sc), color: cssv("--real") }));
+    if (comp) series.push({ type: "dash", xs: comp.res.rows.map(r => r.day), ys: comp.res.rows.map(r => r[v] * sc), color: cssv("--comp"), label: comp.label });
+    series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "This plan", band: { lo, hi } });
+    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, ymaxCap: cfg.max });
+  }
+
+  // ------------------------------------------------ shared helpers
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const pct = v => v == null || isNaN(v) ? "–" : v.toFixed(1) + "%";
+  const H = M.history || [], CUR = H.find(h => h.version === M.version) || H[H.length - 1];
+  $("modelBadge").textContent = M.version;
+  $("footer").textContent = `Model ${M.version} · mechanistic mass balances with machine-learned rate corrections · ${M.store.real + M.store.imported} real runs in store (${M.store.benchmark} kept out for benchmarking) · predictions are model-based and labelled by their basis.`;
+  function trainedIn(id) { const h = H.find(x => x.trained_after === id); return h ? h : null; }
+
+  // ------------------------------------------------ model view: accuracy (fixed benchmark)
+  function buildAccuracy() {
+    const mk = M.bench.known, mu = M.bench.unseen;
+    const rowsS = [["Titer error, all days", pct(mk["titer_MAPE_%"]), pct(mu["titer_MAPE_%"])],
+      ["Titer error, day 10", pct(mk["titer_d10_APE_%"]), pct(mu["titer_d10_APE_%"])],
+      ["Viable cell density error", pct(mk["VCD_MAPE_%"]), pct(mu["VCD_MAPE_%"])],
+      ["Viability error", "± " + mk.viability_MAE.toFixed(1) + " pts", "± " + mu.viability_MAE.toFixed(1) + " pts"],
+      ["Glucose error", "± " + mk.glucose_MAE.toFixed(2) + " g/L", "± " + mu.glucose_MAE.toFixed(2) + " g/L"]];
+    const nk = M.bench.runs.filter(r => !r.unseen).length, nu = M.bench.runs.filter(r => r.unseen).length;
+    let h = `<div class="h"></div><div class="h r">Known recipes<br><span style="text-transform:none;letter-spacing:0">${nk} benchmark runs</span></div><div class="h r">Unseen recipe HIP+<br><span style="text-transform:none;letter-spacing:0">${nu} runs</span></div>`;
+    rowsS.forEach(r => { h += `<div>${r[0]}</div><div class="n">${r[1]}</div><div class="n">${r[2]}</div>`; });
+    $("stats").innerHTML = h;
+    $("knows").innerHTML = `<li>Trained on ${CUR.n_real_train_runs} real NISTCHO runs plus ${M.store.derived} runs derived from replicate variation (v0.7). Base data: 7 feeding strategies, Schaepertoens et al. 2026.</li>
+      <li>Feeding, glucose and Gal+ effects come from real data. Temperature effects come from literature and one CHO-T127 shift pair, so those days are marked as prior.</li>
+      <li>pH and dissolved oxygen are not inputs yet. More real runs narrow the bands and turn prior days into data days.</li>`;
+    const sel = $("fitRun"); sel.innerHTML = "";
+    M.bench.runs.forEach((r, i) => { const o = document.createElement("option"); o.value = i; o.textContent = r.id.replace("D2_", "").replace("p_", "+ ").replace("_", " ") + (r.unseen ? " · unseen recipe" : " · known recipe"); sel.appendChild(o); });
+    sel.value = String(M.bench.runs.findIndex(r => r.unseen)); sel.onchange = drawFit;
+  }
+  function drawFit() {
+    const r = M.bench.runs[+$("fitRun").value];
+    ["titer", "VCD"].forEach(v => {
+      const sc = VARS[v].scale;
+      lineChart($("fit-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 170, xmax: DAYS, dec: VARS[v].dec, series: [
+        { type: "pts", xs: r.day, ys: r.obs[v].map(q => q == null ? null : q * sc), color: cssv("--ink") },
+        { type: "line", xs: r.day, ys: r.pred[v].map(q => q * sc), color: cssv("--accent"), label: "Twin" }] });
+    });
+  }
+
+  // ------------------------------------------------ model view: current version + history
+  function buildModel() {
+    $("mvBig").textContent = "Model " + M.version;
+    $("mvDate").textContent = CUR.date ? "since " + CUR.date : "";
+    $("mvTrained").textContent = `Trained on ${CUR.n_real_train_runs} real runs and ${M.store.derived} derived runs. ` +
+      (CUR.parent ? `Created after batch ${CUR.trained_after}${CUR.mechanistic_refit ? ", with a mechanistic refit" : ", ML corrections retrained"}.` : "Initial build (v0.8 hybrid).");
+    const gates = CUR.gate && CUR.gate.length ? CUR.gate : [{ rule: "Initial version: baseline for later checks", ok: true, value: "" }];
+    $("gateList").innerHTML = gates.map(g => `<li><span class="mark ${g.ok ? "ok" : "no"}">${g.ok ? "✓" : "✗"}</span><span>${esc(g.rule)}</span><span class="val">${esc(g.value)}</span></li>`).join("");
+    $("dirList").innerHTML = CUR.direction_checks.map(d => `<li><span class="mark ${d.ok ? "ok" : "no"}">${d.ok ? "✓" : "✗"}</span><span>${esc(d.check)}</span><span class="val">${d.evidence === "prior" ? "literature" : "real data"}</span></li>`).join("");
+    let h = `<thead><tr><th>Version</th><th>Created after</th><th class="n">Titer error</th><th class="n">VCD error</th><th class="n">In band</th><th>Decision</th></tr></thead><tbody>`;
+    H.slice().reverse().forEach(v => {
+      const cov = Object.values(v.band_coverage).reduce((a, b) => a + b, 0) / 5;
+      const dec = !v.parent ? `<span class="chip info">baseline</span>` : v.promoted ? `<span class="chip ok">promoted</span>` : `<span class="chip err">kept previous</span>`;
+      h += `<tr><td class="mono">${esc(v.version)}${v.version === M.version ? " ◂" : ""}</td><td>${esc(v.parent ? v.trained_after : "initial build")}${v.mechanistic_refit && v.parent ? " · refit" : ""}</td>
+        <td class="n">${pct(v.benchmark_all["titer_MAPE_%"])}</td><td class="n">${pct(v.benchmark_all["VCD_MAPE_%"])}</td><td class="n">${cov.toFixed(0)}%</td><td>${dec}</td></tr>`;
+    });
+    $("histTable").innerHTML = h + "</tbody>";
+    drawHistory();
+  }
+  function drawHistory() {
+    const labels = H.map(v => v.version), xs = labels.map((_, i) => i);
+    const series = [{ type: "line", xs, ys: H.map(v => v.benchmark_all["titer_MAPE_%"]), color: cssv("--accent"), label: "Benchmark titer error" },
+      { type: "dash", xs, ys: H.map(v => v.benchmark_all["VCD_MAPE_%"]), color: cssv("--comp"), label: "Benchmark VCD error" }];
+    const pf = (M.prospective || []).map(p => [labels.indexOf(p.model_version), p.errors["titer_MAPE_%"]]).filter(p => p[0] >= 0);
+    if (pf.length) series.push({ type: "pts", xs: pf.map(p => p[0]), ys: pf.map(p => p[1]), color: cssv("--prior") });
+    lineChart($("histChart"), { title: "Error by model version", unit: "%", height: 190, xmax: Math.max(labels.length - 1, 1), xlabels: labels, xname: "Model",
+      series, dec: 1 });
+    const lg = document.createElement("div"); lg.className = "series-legend"; lg.style.marginTop = "4px";
+    lg.innerHTML = `<span><i class="sw" style="border-color:var(--accent)"></i>Titer error on benchmark</span><span><i class="sw dash" style="border-color:var(--comp)"></i>VCD error on benchmark</span><span><i class="sw pt" style="background:var(--prior)"></i>Titer error of a new batch, predicted first</span>`;
+    $("histChart").appendChild(lg);
+  }
+
+  // ------------------------------------------------ batches view: parse, validate, predict first, save
+  const COLS = ["time_h", "VCD", "viability", "glucose", "lactate", "titer", "feed_pct", "glucose_target", "galplus", "temperature"];
+  let current = null, dbBatches = [], db = null, user = null, myId = null;
+  $("tplText").textContent = M.template;
+  Object.keys(M.examples || {}).forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = k.replace("D2_", "").replace("p_", "+ ").replace("_", " ") + " (real run)"; $("exampleSel").appendChild(o); });
+
+  function parseCSV(text) {
+    const meta = {}, body = [];
+    text.replace(/\r/g, "").split("\n").forEach(line => {
+      const l = line.trim(); if (!l) return;
+      if (l.startsWith("#")) { const i = l.indexOf(":"); if (i > 0) meta[l.slice(1, i).trim().toLowerCase()] = l.slice(i + 1).trim(); return; }
+      body.push(l);
+    });
+    if (!body.length) return { meta, header: [], rows: [] };
+    const delim = body[0].includes(";") && !body[0].includes(",") ? ";" : body[0].includes("\t") ? "\t" : ",";
+    const header = body[0].split(delim).map(h => h.trim());
+    const rows = body.slice(1).map(l => { const c = l.split(delim); const r = {}; header.forEach((h, i) => { const s = (c[i] || "").trim(); r[h] = s === "" ? null : +s; }); return r; });
+    return { meta, header, rows };
+  }
+  function validate(p) {
+    const err = [], warn = [];
+    const miss = COLS.filter(c => !p.header.includes(c));
+    if (miss.length) { err.push("Missing columns: " + miss.join(", ")); return { err, warn }; }
+    const r = p.rows;
+    if (r.length < 4) err.push("At least 4 samples are needed.");
+    if (r.some(x => COLS.some(c => x[c] != null && isNaN(x[c])))) err.push("Some cells are not numbers.");
+    if (!r.length) return { err, warn };
+    if (Math.abs(r[0].time_h || 0) > 1) err.push("The first sample must be at 0 h (inoculation).");
+    for (let i = 1; i < r.length; i++) if (!(r[i].time_h > r[i - 1].time_h)) { err.push("time_h must increase from row to row."); break; }
+    if (!(r[0].VCD > 0)) err.push("VCD at 0 h is required.");
+    const rng = { VCD: [0, 40], viability: [0, 100], glucose: [0, 20], lactate: [0, 10], titer: [0, 6000] };
+    Object.entries(rng).forEach(([c, [lo, hi]]) => { const n = r.filter(x => x[c] != null && (x[c] < lo || x[c] > hi)).length; if (n) err.push(`${c} outside ${lo}–${hi}: ${n} value(s).`); });
+    const tit = r.map(x => x.titer).filter(v => v != null);
+    if (tit.length > 2 && Math.max(...tit) < 20) err.push("Titer looks like g/L; the file expects mg/L.");
+    if (Math.max(...r.map(x => x.glucose ?? 0)) > 15) warn.push("Glucose above 15: check it is g/L, not mM.");
+    if (Math.max(...r.map(x => x.lactate ?? 0)) > 5) warn.push("Lactate above 5: check it is g/L, not mM.");
+    const inp = r.slice(0, -1);
+    if (inp.some(x => (x.feed_pct ?? 0) > 15)) err.push("feed_pct above 15% v/v.");
+    if (inp.some(x => x.temperature != null && (x.temperature < 28 || x.temperature > 39))) err.push("Temperature outside 28–39 °C.");
+    if (inp.some(x => (x.feed_pct ?? 0) > 5)) warn.push("Feed above 5% v/v is outside the range the model was trained on.");
+    if (inp.some(x => x.glucose_target && (x.glucose_target < 2 || x.glucose_target > 8))) warn.push("A glucose target outside 2–8 g/L is outside the trained range.");
+    if (inp.some(x => x.temperature != null && x.temperature !== 37)) warn.push("Temperature differs from 37 °C: the model uses a literature prior there.");
+    ["titer", "glucose", "viability"].forEach(c => { if (r.filter(x => x[c] != null).length < 3) warn.push(`Fewer than 3 ${c} measurements: little to learn from.`); });
+    return { err, warn };
+  }
+  function check(text, fallbackId) {
+    const p = parseCSV(text), v = validate(p);
+    const id = (p.meta.batch_id || fallbackId || "batch").replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 60);
+    current = { id, meta: p.meta, rows: p.rows, csv: text, valid: !v.err.length };
+    $("checkEmpty").hidden = true; $("checkBody").hidden = false;
+    $("pfTitle").textContent = id;
+    $("pfMeta").textContent = [p.meta.recipe ? "recipe " + p.meta.recipe : "", p.rows.length + " samples", p.rows.length ? "to day " + (p.rows[p.rows.length - 1].time_h / 24).toFixed(1) : ""].filter(Boolean).join(" · ");
+    const dup = (M.in_store || []).includes(id) || dbBatches.some(b => b.id === id);
+    const msgs = v.err.map(e => `<li><span class="chip err">error</span>${esc(e)}</li>`).concat(v.warn.map(w => `<li><span class="chip warn">check</span>${esc(w)}</li>`));
+    if (dup) msgs.push(`<li><span class="chip info">known</span>${esc(id)} is already ${(M.in_store || []).includes(id) ? "in the model's run store" : "saved and waiting for retraining"}. You can still see how the model predicts it.</li>`);
+    if (!v.err.length && !v.warn.length) msgs.unshift(`<li><span class="chip ok">valid</span>Columns, units and ranges look right.</li>`);
+    $("pfMsgs").innerHTML = msgs.join("");
+    $("pfResult").hidden = !!v.err.length;
+    $("saveBatch").disabled = !!v.err.length || dup;
+    $("saveMsg").textContent = v.err.length ? "Fix the errors above, then check the file again." : dup ? "Already stored, so there is nothing to save." : "";
+    if (v.err.length) return;
+    const res = T.simulateBatch(M, p.rows), e = T.errors(res.rows, p.rows);
+    current.result = res; current.errors = e;
+    let inside = 0, total = 0;
+    p.rows.forEach((s, i) => { if (!i) return; T.OUT.forEach(k => { if (s[k] != null) { total++; if (s[k] >= res.rows[i][k + "_lo"] && s[k] <= res.rows[i][k + "_hi"]) inside++; } }); });
+    current.inside = [inside, total];
+    $("pfModel").textContent = M.version;
+    const bk = M.bench.known;
+    $("pfNums").innerHTML = `
+      <div><span class="label">Titer error</span><span class="v">${pct(e["titer_MAPE_%"])}</span><span class="sub">benchmark typical ${pct(bk["titer_MAPE_%"])}</span></div>
+      <div><span class="label">VCD error</span><span class="v">${pct(e["VCD_MAPE_%"])}</span><span class="sub">benchmark typical ${pct(bk["VCD_MAPE_%"])}</span></div>
+      <div><span class="label">Viability error</span><span class="v">${e.viability_MAE == null ? "–" : "±" + e.viability_MAE.toFixed(1)}</span><span class="sub">points</span></div>
+      <div><span class="label">Inside 80% band</span><span class="v">${total ? Math.round(100 * inside / total) : "–"}%</span><span class="sub">${inside} of ${total} measurements</span></div>`;
+    drawCheck();
+  }
+  function drawCheck() {
+    if (!current || !current.result) return;
+    const rows = current.result.rows, xs = rows.map(r => r.day), xmax = Math.max(DAYS, Math.ceil(xs[xs.length - 1]));
+    ["titer", "VCD", "viability", "glucose"].forEach(v => {
+      const sc = VARS[v].scale;
+      lineChart($("pf-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 165, xmax, dec: VARS[v].dec, ymaxCap: VARS[v].max, series: [
+        { type: "band", xs, lo: rows.map(r => r[v + "_lo"] * sc), hi: rows.map(r => r[v + "_hi"] * sc), color: cssv("--accent") },
+        { type: "pts", xs, ys: current.rows.map(r => r[v] == null ? null : r[v] * sc), color: cssv("--ink") },
+        { type: "line", xs, ys: rows.map(r => r[v] * sc), color: cssv("--accent"), label: "Predicted", band: { lo: rows.map(r => r[v + "_lo"] * sc), hi: rows.map(r => r[v + "_hi"] * sc) } }] });
+    });
+  }
+  $("file").addEventListener("change", e => { const f = e.target.files[0]; if (!f) return; f.text().then(tx => check(tx, f.name.replace(/\.[^.]+$/, ""))); e.target.value = ""; });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) f.text().then(tx => check(tx, f.name.replace(/\.[^.]+$/, ""))); });
+  $("exampleSel").addEventListener("change", e => { const k = e.target.value; if (k) check(M.examples[k], k); e.target.value = ""; });
+  $("pasteToggle").addEventListener("click", () => { $("pasteBox").hidden = !$("pasteBox").hidden; });
+  $("pasteGo").addEventListener("click", () => { if ($("pasteArea").value.trim()) check($("pasteArea").value, "pasted_batch"); });
+  $("copyTpl").addEventListener("click", () => {
+    navigator.clipboard.writeText(M.template).then(() => { $("copyTpl").textContent = "Copied"; setTimeout(() => $("copyTpl").textContent = "Copy template", 1500); })
+      .catch(() => { const r = document.createRange(); r.selectNodeContents($("tplText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); });
+  });
+  const SITE = window.SITE || null;   // set on the public website build (GitHub Pages): no page database there
+  if (SITE) $("saveBatch").textContent = "Download for upload";
+  function downloadText(name, text) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  $("saveBatch").addEventListener("click", async () => {
+    if (!current || !current.valid) return;
+    if (SITE) {
+      const hasId = /^\s*#\s*batch_id\s*:/im.test(current.csv);
+      const text = (hasId ? "" : `# batch_id: ${current.id}\n`) + current.csv.replace(/\r/g, "").trim() + "\n";
+      downloadText(current.id + ".csv", text);
+      const up = SITE.repo ? `https://github.com/${SITE.repo}/upload/${SITE.branch || "main"}/batches/incoming` : "";
+      $("saveMsg").innerHTML = `Downloaded ${esc(current.id)}.csv. Upload it to <code>batches/incoming</code>` + (up ? ` (<a href="${up}" target="_blank" rel="noopener">open upload page</a>)` : "") + `; the site retrains and updates in a few minutes.`;
+      return;
+    }
+    if (!db) { $("saveMsg").textContent = "Saving needs a signed-in viewer with access to this page. You can still check batches here."; return; }
+    $("saveBatch").disabled = true; $("saveMsg").textContent = "Saving…";
+    const doc = { batch_id: current.id, recipe: current.meta.recipe || "", note: current.meta.note || "", csv: current.csv.slice(0, 200000),
+      samples: current.rows.length, added_at: new Date().toISOString(), added_by: myId || "", model_version: M.version,
+      predict_first: { errors: current.errors, inside: current.inside[0], total: current.inside[1] }, status: "waiting" };
+    try { await db.collection("batches").doc(current.id).set(doc); $("saveMsg").textContent = "Saved. It is now waiting for the next retraining."; }
+    catch (err) { $("saveBatch").disabled = false; $("saveMsg").textContent = (err && (err.code === "permission_denied" || err.code === "not_granted")) ? "You can check batches, but saving needs edit access to this page." : "Could not save: " + (err && err.message || "unknown error") + ". Try again."; }
+  });
+
+  function renderLog() {
+    const rows = [];
+    (M.prospective || []).forEach(p => {
+      const h = trainedIn(p.batch_id);
+      rows.push({ id: p.batch_id, recipe: p.recipe, added: p.date, model: p.model_version, e: p.errors,
+        status: h ? (h.promoted ? `<span class="chip ok">in model ${esc(h.version)}</span>` : `<span class="chip info">stored · model kept</span>`) : `<span class="chip ok">in store</span>` });
+    });
+    dbBatches.forEach(b => {
+      if (rows.some(r => r.id === b.id)) return;
+      const d = b.data;
+      rows.push({ id: b.id, recipe: d.recipe, added: (d.added_at || "").slice(0, 10), model: d.model_version, e: (d.predict_first || {}).errors || {},
+        status: `<span class="chip warn">waiting for retrain</span>` });
+    });
+    (M.rejected || []).forEach(r => { if (!rows.some(x => x.id === r.id)) rows.push({ id: r.id, recipe: r.recipe, added: r.date, model: "–", e: {},
+      status: `<span class="chip err" title="${esc((r.errors || []).join(" "))}">rejected</span> <span class="note">${esc((r.errors || [])[0] || "")}</span>` }); });
+    rows.sort((a, b) => (b.added || "").localeCompare(a.added || ""));
+    let h = `<thead><tr><th>Batch</th><th>Recipe</th><th>Added</th><th>Predicted with</th><th class="n">Titer error</th><th class="n">VCD error</th><th>Status</th></tr></thead><tbody>`;
+    if (!rows.length) h += `<tr><td colspan="7" class="note">No imported batches yet.</td></tr>`;
+    rows.forEach(r => { h += `<tr><td class="mono">${esc(r.id)}</td><td>${esc(r.recipe || "–")}</td><td class="mono">${esc(r.added || "–")}</td><td class="mono">${esc(r.model || "–")}</td>
+      <td class="n">${pct(r.e["titer_MAPE_%"])}</td><td class="n">${pct(r.e["VCD_MAPE_%"])}</td><td>${r.status}</td></tr>`; });
+    $("batchLog").innerHTML = h + "</tbody>";
+    const waiting = dbBatches.filter(b => !(M.in_store || []).includes(b.id) && !(M.prospective || []).some(p => p.batch_id === b.id)).length;
+    $("pendingCount").hidden = !waiting; $("pendingCount").textContent = waiting;
+    $("logNote").textContent = `${M.store.real + M.store.imported} real runs in store · ${M.store.imported} imported`;
+    $("retrainNote").innerHTML = (waiting ? `<b>${waiting} batch${waiting > 1 ? "es" : ""} waiting.</b> ` : "") +
+      (SITE ? `Retraining runs automatically on GitHub. Upload a batch CSV to <code>batches/incoming</code>${SITE.repo ? ` (<a href="https://github.com/${SITE.repo}/upload/${SITE.branch || "main"}/batches/incoming" target="_blank" rel="noopener">upload page</a>)` : ""}: the pipeline validates it, predicts it first, retrains, runs the promotion checks and republishes this site, usually within 5 minutes. The new model appears here as the next version.`
+      : `Retraining runs in the Python pipeline: validate → predict first → retrain → benchmark → promotion checks. Ask Claude to <i>retrain the twin with the new batches</i>, or run <code>python import_batch.py your_run.csv</code>. The new model appears here as the next version.`);
+  }
+
+  // ------------------------------------------------ database (saved batches)
+  (async () => {
+    try {
+      if (!window.claude || !window.claude.use) { renderLog(); return; }
+      db = await claude.use("db"); user = await claude.use("user");
+      if (user && user.id) { try { myId = await user.id(); } catch (e) { myId = null; } }
+      if (!db) { renderLog(); return; }
+      let timer = setTimeout(() => { $("logNote").textContent = "Saved batches can't be reached yet; the list may be incomplete."; }, 10000);
+      db.collection("batches").onSnapshot(snap => {
+        if (!snap.metadata.fromCache) clearTimeout(timer);
+        dbBatches = snap.docs.filter(d => d.exists).map(d => ({ id: d.id, data: d.data() }));
+        renderLog();
+      }, () => { clearTimeout(timer); renderLog(); });
+    } catch (e) { renderLog(); }
+  })();
+
+  // ------------------------------------------------ views
+  const VIEWS = ["plan", "batches", "model"];
+  function showView() {
+    const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "plan";
+    VIEWS.forEach(x => { $("view-" + x).hidden = x !== v; $("tab-" + x).setAttribute("aria-current", x === v ? "page" : "false"); });
+    redraw();
+  }
+  function redraw() {
+    if (!$("view-plan").hidden) render();
+    if (!$("view-model").hidden) { drawFit(); drawHistory(); buildModelCharts(); }
+    if (!$("view-batches").hidden) drawCheck();
+  }
+  function buildModelCharts() {}
+  window.addEventListener("hashchange", showView);
+
+  buildRows(); setRecipe("STD"); buildAccuracy(); buildModel(); renderLog(); showView();
+  let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(redraw, 120); }).observe(document.querySelector(".wrap"));
+  const mq = window.matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", redraw);
+  new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>

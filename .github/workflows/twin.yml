@@ -1,0 +1,58 @@
+name: Retrain and publish the twin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      refit_mech:
+        description: "Also refit the mechanistic parameters (slower)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: twin
+  cancel-in-progress: false
+
+jobs:
+  retrain-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Import new batches (validate, predict first, retrain, gate)
+        env:
+          REFIT_MECH: ${{ inputs.refit_mech && '1' || '0' }}
+        run: python process_incoming.py
+      - name: Save the new model version and batch results
+        run: |
+          git config user.name "twin-bot"
+          git config user.email "twin-bot@users.noreply.github.com"
+          git add -A batches store registry
+          git diff --cached --quiet || git commit -m "Retrain: import new batches [model $(cat registry/champion.txt)]"
+          git push
+      - name: Build the website
+        run: python build_site.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: retrain-and-build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

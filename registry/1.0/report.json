@@ -1,0 +1,76 @@
+{
+ "benchmark_all": {
+  "VCD_MAPE_%": 14.932128684574486,
+  "viability_MAE": 1.6482426063264766,
+  "glucose_MAE": 0.3916617134049206,
+  "lactate_MAE": 0.2187444511025581,
+  "titer_MAPE_%": 9.663730458711287,
+  "titer_d10_APE_%": 7.342027141646995
+ },
+ "benchmark_known": {
+  "VCD_MAPE_%": 9.05684604556694,
+  "viability_MAE": 2.068059710558063,
+  "glucose_MAE": 0.603653891095591,
+  "lactate_MAE": 0.303921640660378,
+  "titer_MAPE_%": 9.37108716304523,
+  "titer_d10_APE_%": 9.5586470021665
+ },
+ "benchmark_unseen": {
+  "VCD_MAPE_%": 20.372205202174065,
+  "viability_MAE": 1.243974283733097,
+  "glucose_MAE": 0.1885025431180282,
+  "lactate_MAE": 0.1335672615447382,
+  "titer_MAPE_%": 9.945535113797117,
+  "titer_d10_APE_%": 5.1254072811274884
+ },
+ "band_coverage": {
+  "VCD": 75.47169811320755,
+  "viability": 73.58490566037736,
+  "glucose": 85.1063829787234,
+  "lactate": 76.66666666666667,
+  "titer": 73.58490566037736
+ },
+ "clip_rate": 0.01509433962264151,
+ "direction_checks": [
+  {
+   "check": "Glucose target 4 vs 8 lowers final titer",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Glucose target 4 vs 8 collapses the culture",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Gal+ extends viability under glucose limitation",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "Daily feeding gives lower titer than 48 h feeding",
+   "ok": true,
+   "evidence": "data"
+  },
+  {
+   "check": "33 degC shift lowers peak VCD",
+   "ok": true,
+   "evidence": "prior"
+  },
+  {
+   "check": "33 degC shift extends viability",
+   "ok": true,
+   "evidence": "prior"
+  }
+ ],
+ "version": "1.0",
+ "parent": "",
+ "date": "2026-11-01",
+ "trained_after": "initial build (v0.8)",
+ "mechanistic_refit": true,
+ "n_train_runs": 196,
+ "n_real_train_runs": 16,
+ "median_abs_log_correction": 0.11416233236836629,
+ "promoted": true,
+ "gate": []
+}

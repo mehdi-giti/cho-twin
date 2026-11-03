@@ -279,7 +279,8 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 .live-bar .num-in { width: 3.4em; }
 .live-bar .adj { flex-direction: row; flex-wrap: wrap; gap: 2px 14px; font-size: 0.8rem; }
 .charts { position: relative; }
-.axes-pop { position: absolute; inset-inline-end: 16px; top: 44px; z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); width: min(340px, calc(100% - 32px)); }
+.chart-head .axes { position: relative; }
+.axes-pop { position: absolute; right: 0; top: 26px; z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); width: 340px; }
 .small-grid4 .ctitle { flex-direction: column; align-items: flex-start; gap: 0; }
 .small-grid4 .ctitle h3 { font-size: 0.86rem; white-space: nowrap; }
 .small-grid4 .ctitle .unit { font-size: 0.7rem; }
@@ -705,8 +706,7 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
   }
   function closePop() { $("popover").hidden = true; }
   $("popClose").addEventListener("click", closePop);
-  // Esc closes the innermost panel only: the cell editor first, then the suggestion drawer
-  document.addEventListener("keydown", e => { if (e.key !== "Escape") return; if (!$("popover").hidden) closePop(); else if (!$("sgPanel").hidden) $("sgPanel").hidden = true; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePop(); $("sgPanel").hidden = true; } });
   document.addEventListener("mousedown", e => { const p = $("popover"); if (!p.hidden && !p.contains(e.target) && !e.target.closest(".tl-in")) closePop(); });
   function fillRows() {
     steps.forEach((s, d) => {
@@ -1306,7 +1306,7 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     redraw();
   }
   function redraw() {
-    if (!$("view-plan").hidden) { render(); placePop(); }
+    if (!$("view-plan").hidden) render();
     if (!$("view-model").hidden) { drawFit(); drawHistory(); buildModelCharts(); }
     if (!$("view-batches").hidden) drawCheck();
   }

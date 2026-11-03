@@ -80,9 +80,9 @@ table.days td.galcell { text-align: center; }
 /* readout */
 .readout { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
-.kpi { padding: 10px 14px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-inline-start: 1px solid var(--line); }
+.kpi { padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-inline-start: 1px solid var(--line); }
 .kpi:first-child { border-inline-start: 0; }
-.kpi .v { font-family: var(--f-mono); font-size: 1.35rem; font-weight: 500; line-height: 1.15; }
+.kpi .v { font-family: var(--f-mono); font-size: 1.55rem; font-weight: 500; line-height: 1.15; }
 .kpi .v small { font-size: 0.8rem; color: var(--ink-2); font-weight: 400; margin-left: 3px; }
 .kpi .sub { font-size: 0.78rem; color: var(--ink-2); }
 .delta.up { color: var(--good); } .delta.down { color: var(--extra); }
@@ -266,62 +266,6 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 .sg-opt .num { font-family: var(--f-mono); font-size: 1.25rem; }
 .sg-opt .gain { font-size: 0.8rem; }
 .sg-opt.applied { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-
-/* ---------- layout C: toolbar, KPIs, charts, timeline aligned under the titer chart */
-#view-plan { display: flex; flex-direction: column; gap: 12px; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 20px; padding: 12px 16px; }
-.tb-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 380px; }
-.tb-group .recipe-note { margin: 0; font-size: 0.8rem; }
-.toolbar .row > select { min-width: 110px; }
-.tb-seed { min-width: 220px; } .tb-seed summary { cursor: pointer; } .tb-seed .seeds { margin-top: 8px; width: 320px; }
-.tb-actions { align-self: center; }
-.live-bar { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; border-color: var(--accent); background: var(--edit-bg); }
-.live-bar .num-in { width: 3.4em; }
-.live-bar .adj { flex-direction: row; flex-wrap: wrap; gap: 2px 14px; font-size: 0.8rem; }
-.charts { position: relative; }
-.chart-head .axes { position: relative; }
-.axes-pop { position: absolute; right: 0; top: 26px; z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); width: 340px; }
-.small-grid4 .ctitle { flex-direction: column; align-items: flex-start; gap: 0; }
-.small-grid4 .ctitle h3 { font-size: 0.86rem; white-space: nowrap; }
-.small-grid4 .ctitle .unit { font-size: 0.7rem; }
-.tl-toggle { background: none; border: 0; padding: 0; color: var(--accent-ink); font: inherit; font-size: 0.74rem; cursor: pointer; text-align: start; }
-.main-grid { display: grid; grid-template-columns: minmax(0, 2.15fr) minmax(320px, 1fr); gap: 14px 22px; align-items: start; }
-.small-grid4 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
-@media (max-width: 1150px) { .main-grid { grid-template-columns: minmax(0, 1fr); } .small-grid4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 760px) { .small-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.align-wrap { direction: ltr; overflow-x: auto; }
-.align-wrap > * { min-width: 760px; }
-.timeline { display: grid; grid-template-columns: 132px repeat(11, minmax(0, 1fr)) 10px; gap: 2px 3px; margin-top: 2px; font-size: 0.8rem; }
-.tl-lab { display: flex; align-items: center; gap: 4px; padding-right: 8px; color: var(--ink-2); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-:root[lang="fa"] .tl-lab { direction: rtl; justify-content: flex-end; }
-.tl-lab .u { color: var(--muted); font-weight: 400; font-size: 0.72rem; }
-.tl-hd { text-align: center; font-family: var(--f-mono); color: var(--muted); font-size: 0.74rem; padding: 2px 0; border-radius: 4px; }
-.tl-hd.sel { background: var(--accent); color: #fff; }
-.tl-sec { grid-column: 1 / -1; font-family: var(--f-display); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 0 2px; border-top: 1px solid var(--grid); }
-.tl-sec .u { text-transform: none; letter-spacing: 0; }
-.tl-c { min-width: 0; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-family: var(--f-mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
-button.tl-in { border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; padding: 0; }
-button.tl-in:hover { border-color: var(--ink-2); }
-button.tl-in.off { color: var(--muted); }
-button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: var(--accent); background: var(--edit-bg); }
-.tl-c.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.tl-c.past { opacity: 0.6; }
-.tl-pred { color: var(--muted); font-style: italic; }
-.tl-num { width: 100% !important; height: 26px; padding: 2px 3px !important; font-size: 0.74rem !important; text-align: center !important; }
-.tl-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; margin-top: 8px; }
-.popover { position: absolute; z-index: 8; width: 360px; max-width: calc(100% - 16px); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,0.18); }
-.popover .editor { border: 0; background: transparent; position: relative; }
-.popover .editor { gap: 10px; padding: 12px; }
-.popover .ed-head { flex-wrap: nowrap; }
-.popover .seg button { padding: 4px 8px; }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 20; width: min(420px, 100vw); overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0,0,0,0.16);
-  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) 16px; display: flex; flex-direction: column; gap: 12px; }
-:root[lang="fa"] .drawer { right: auto; left: 0; border-left: 0; border-right: 1px solid var(--line); }
-.drawer .sg-head { flex-direction: column; align-items: stretch; }
-#sgClose { position: absolute; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; }
-:root[lang="fa"] #sgClose { right: auto; left: 14px; }
-.drawer .sg-ctrl { flex-direction: column; align-items: flex-start; }
-.sg-stack { grid-template-columns: minmax(0, 1fr) !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -345,85 +289,49 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     <a href="#model" id="tab-model">Model</a>
   </nav>
   <div id="view-plan">
-  <!-- layout C: toolbar, KPIs, charts, and a day-aligned timeline of inputs directly under the titer chart -->
-  <div class="panel toolbar" aria-label="Run plan">
-    <div class="tb-group">
-      <label class="label" for="recipe">Start from a real feeding strategy</label>
-      <div class="row" style="gap:8px"><select id="recipe"></select>
-        <div class="seg" role="group" aria-label="Mode"><button id="modePlan" aria-pressed="true">New plan</button><button id="modeLive" aria-pressed="false">Running batch</button></div></div>
-      <p class="recipe-note" id="recipeNote"></p>
-    </div>
-    <details class="tb-seed" aria-label="Start of culture"><summary class="label">Start of culture</summary>
-      <div class="seeds">
-        <div class="sl"><label for="slSeedX">Seed VCD</label><span class="val" id="vSeedX"></span>
-          <input type="range" id="slSeedX" min="0.2" max="0.8" step="0.02" value="0.4"><div class="meta"><span>10⁶ cells/mL</span></div></div>
-        <div class="sl"><label for="slSeedV">Seed viability</label><span class="val" id="vSeedV"></span>
-          <input type="range" id="slSeedV" min="90" max="100" step="0.5" value="97.5"><div class="meta"><span>%</span></div></div>
+
+  <div class="grid">
+    <!-- RUN PLAN -->
+    <aside class="panel plan" aria-label="Run plan">
+      <div class="row" style="justify-content:space-between">
+        <h2>Run plan</h2>
+        <span class="label">11-day culture</span>
       </div>
-    </details>
-    <div class="row tb-actions">
-      <button class="btn" id="reset">Reset to recipe</button>
-      <button class="btn primary" id="pin">Keep as comparison</button>
-      <button class="btn" id="unpin" hidden>Clear comparison</button>
-    </div>
-  </div>
-
-  <div class="panel live-bar" id="livePanel" hidden>
-    <div class="row" style="gap:8px 14px">
-      <label class="label" for="liveDay">Measured up to day (today)</label>
-      <input type="text" inputmode="numeric" class="num-in" id="liveDay" value="5" dir="ltr" lang="en">
-      <select id="liveDemo" aria-label="Fill with a real run"><option value="">Fill with a real run…</option></select>
-      <button class="btn small" id="livePasteBtn">Paste CSV</button>
-      <button class="btn small" id="liveClear">Clear</button>
-      <button class="btn primary small" id="sgOpen">Suggest inputs</button>
-    </div>
-    <div id="livePasteBox" hidden class="stack" style="gap:6px">
-      <textarea id="livePaste" rows="4" aria-label="Running batch CSV" placeholder="time_h,VCD,viability,glucose,lactate,titer,feed_pct,glucose_target,galplus,temperature"></textarea>
-      <button class="btn small" id="livePasteGo" style="align-self:flex-start">Use pasted data</button>
-    </div>
-    <div class="adj" id="selfAdj"></div>
-    <p class="note" id="liveSource" style="margin:0"></p>
-  </div>
-
-  <div class="kpis" id="kpis"></div>
-
-  <div class="panel charts" id="chartsPanel">
-    <div class="chart-head">
-      <div class="series-legend" id="seriesLegend"></div>
-      <div class="row" style="gap:12px">
-        <label class="toggle"><input type="checkbox" id="showReal" checked> Measured real runs</label>
-        <details class="axes" id="axesBox"><summary>Axis limits</summary>
-          <div class="axes-pop">
-            <p class="note" style="margin:0 0 6px">Fixed, so the scale stays put while you change inputs.</p>
-            <div class="axes-grid" id="axesGrid"></div>
-            <div class="row" style="margin-top:8px"><button class="btn small" id="axesReset">Reset to defaults</button><span class="note">Values above a limit show as ▲ off scale.</span></div>
-          </div>
-        </details>
+      <div class="field">
+        <label class="label" for="recipe">Start from a real feeding strategy</label>
+        <select id="recipe"></select>
+        <p class="recipe-note" id="recipeNote"></p>
       </div>
-    </div>
-    <div class="main-grid">
-    <div class="align-wrap">
-      <div class="chart" id="ch-titer"></div>
-      <div class="timeline" id="timeline" aria-label="Inputs per day (click a cell to edit)"></div>
-      <div class="tl-foot">
-        <div class="legend-basis" aria-label="Basis legend">
-          <span><i class="dot data"></i>Within real data</span>
-          <span><i class="dot prior"></i>Literature prior (temperature, pH, DO)</span>
-          <span><i class="dot extrapol"></i>Outside tested range</span>
+      <div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
+        <button id="modePlan" aria-pressed="true">New plan</button>
+        <button id="modeLive" aria-pressed="false">Running batch</button>
+      </div>
+      <div class="live" id="livePanel" hidden>
+        <div class="row" style="justify-content:space-between">
+          <label class="label" for="liveDay">Measured up to day (today)</label>
+          <input type="text" inputmode="numeric" class="num-in" id="liveDay" value="5" dir="ltr" lang="en">
         </div>
-        <span class="note">Click a cell to edit that day. Inputs act at the start of each day, after the morning sample.</span>
+        <div class="tablewrap">
+          <table class="days meas" aria-label="Measured values per day">
+            <thead><tr><th>Day</th><th>VCD<br>10⁶/mL</th><th>Viab.<br>%</th><th>Glc<br>g/L</th><th>Lac<br>g/L</th><th>Titer<br>mg/L</th></tr></thead>
+            <tbody id="measRows"></tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:0">Morning samples, before that day's feed; leave blank what was not measured. The inputs already applied on days before today go in the day table below.</p>
+        <div class="row">
+          <select id="liveDemo" aria-label="Fill with a real run"><option value="">Fill with a real run…</option></select>
+          <button class="btn small" id="livePasteBtn">Paste CSV</button>
+          <button class="btn small" id="liveClear">Clear</button>
+        </div>
+        <div id="livePasteBox" hidden class="stack" style="gap:6px">
+          <textarea id="livePaste" rows="5" aria-label="Running batch CSV" placeholder="time_h,VCD,viability,glucose,lactate,titer,feed_pct,glucose_target,galplus,temperature"></textarea>
+          <button class="btn small" id="livePasteGo" style="align-self:flex-start">Use pasted data</button>
+        </div>
+        <p class="note" id="liveSource" style="margin:0"></p>
+        <div class="adj" id="selfAdj"></div>
       </div>
-    </div>
-    <div class="small-grid4">
-      <div class="chart" id="ch-VCD"></div>
-      <div class="chart" id="ch-viability"></div>
-      <div class="chart" id="ch-glucose"></div>
-      <div class="chart" id="ch-lactate"></div>
-    </div>
-    </div>
-    <div class="popover" id="popover" hidden>
-      <div class="editor" aria-label="Edit inputs">
 
+      <div class="editor" aria-label="Edit inputs">
         <div class="ed-head">
           <div class="ed-day">
             <button class="icon-btn" id="prevDay" aria-label="Previous day">&#8592;</button>
@@ -434,7 +342,6 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
             <button id="scopeOne" aria-pressed="false">This day</button>
             <button id="scopeOn" aria-pressed="true">This day onward</button>
           </div>
-          <button class="icon-btn" id="popClose" aria-label="Close editor">&#215;</button>
         </div>
         <div class="sl">
           <label for="slFeed">Feed volume</label><span class="val" id="vFeed"></span>
@@ -466,13 +373,39 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
         <p class="note" id="scopeNote" style="margin:0"></p>
       </div>
 
-    </div>
-    <p class="note">Bands show the 80% range, calibrated on real runs the model never trained on; they widen the further ahead the twin predicts. Glucose is shown as sampled, before that day's feed.</p>
-    <details class="tableview"><summary>Daily values as a table</summary><div class="tablewrap" id="valTable"></div></details>
-  </div>
-      <aside class="drawer" id="sgPanel" hidden aria-label="Suggested inputs">
+      <div>
+        <div class="tablewrap">
+          <table class="days" aria-label="Inputs per day (click a row to edit)">
+            <thead><tr><th>Day</th><th>Feed<br>% v/v</th><th>Glc<br>g/L</th><th>Gal+</th><th>Temp<br>°C</th><th>pH</th><th>DO<br>%</th><th title="Basis">B</th></tr></thead>
+            <tbody id="dayRows"></tbody>
+          </table>
+        </div>
+        <p class="note" style="margin-top:6px">Click a day to edit it. Inputs act at the start of each day, after the morning sample. Edited values are shown in colour.</p>
+      </div>
+      <div class="legend-basis" aria-label="Basis legend">
+        <span><i class="dot data"></i>Within real data</span>
+        <span><i class="dot prior"></i>Literature prior (temperature, pH, DO)</span>
+        <span><i class="dot extrapol"></i>Outside tested range</span>
+      </div>
+      <div class="seeds" aria-label="Start of culture">
+        <div class="sl"><label for="slSeedX">Seed VCD</label><span class="val" id="vSeedX"></span>
+          <input type="range" id="slSeedX" min="0.2" max="0.8" step="0.02" value="0.4"><div class="meta"><span>10⁶ cells/mL</span></div></div>
+        <div class="sl"><label for="slSeedV">Seed viability</label><span class="val" id="vSeedV"></span>
+          <input type="range" id="slSeedV" min="90" max="100" step="0.5" value="97.5"><div class="meta"><span>%</span></div></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="reset">Reset to recipe</button>
+        <button class="btn primary" id="pin">Keep as comparison</button>
+        <button class="btn" id="unpin" hidden>Clear comparison</button>
+      </div>
+    </aside>
+
+    <!-- READOUT -->
+    <main class="readout" aria-label="Prediction">
+      <div class="kpis" id="kpis"></div>
+      <section class="panel stack" id="sgPanel" hidden aria-label="Suggested inputs">
         <div class="sg-head">
-          <h2 id="sgTitle">Suggest inputs from today</h2><button class="icon-btn" id="sgClose" aria-label="Close suggestions">&#215;</button>
+          <h2 id="sgTitle">Suggest inputs from today</h2>
           <div class="sg-ctrl">
             <label for="sgVia">Keep final viability ≥ <b id="sgViaV">80</b>%</label>
             <input type="range" id="sgVia" min="50" max="95" step="5" value="80">
@@ -480,9 +413,31 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
             <button class="btn primary" id="sgGo">Find best inputs</button>
           </div>
         </div>
-        <div id="sgOut" class="sg-opts sg-stack"></div>
+        <div id="sgOut" class="sg-opts"></div>
         <p class="note" style="margin:0">The search tries every combination of feeding every 24 h (2.5%) or 48 h (5%), glucose top-up 2–8 g/L, Gal+ on or off and, if allowed, a shift to 33–35 °C, and ranks them by predicted day-11 titer. Each setting was tested in real runs, but most combinations were not: treat a suggestion as the next experiment to run, not a guaranteed result.</p>
-      </aside>
+      </section>
+      <div class="panel charts">
+        <div class="chart-head">
+          <div class="series-legend" id="seriesLegend"></div>
+          <label class="toggle"><input type="checkbox" id="showReal" checked> Measured real runs</label>
+        </div>
+        <details class="axes" id="axesBox"><summary>Axis limits (fixed, so the scale stays put while you change inputs)</summary>
+          <div class="axes-grid" id="axesGrid"></div>
+          <div class="row" style="margin-top:8px"><button class="btn small" id="axesReset">Reset to defaults</button><span class="note">Values above a limit show as ▲ off scale.</span></div>
+        </details>
+        <div class="chart" id="ch-titer"></div>
+        <div class="small-grid">
+          <div class="chart" id="ch-VCD"></div>
+          <div class="chart" id="ch-viability"></div>
+          <div class="chart" id="ch-glucose"></div>
+          <div class="chart" id="ch-lactate"></div>
+        </div>
+        <p class="note">Bands show the 80% range, calibrated on real runs the model never trained on; they widen the further ahead the twin predicts. Glucose is shown as sampled, before that day's feed.</p>
+        <details class="tableview"><summary>Daily values as a table</summary><div class="tablewrap" id="valTable"></div></details>
+      </div>
+    </main>
+  </div>
+
   </div><!-- /view-plan -->
 
   <!-- BATCHES -->
@@ -657,57 +612,16 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
   Object.keys(TESTED).forEach(paintTrack);
 
   function eq(a, b) { return (a == null || a === "" ? null : +a) === (b == null || b === "" ? null : +b); }
-  // ---------- timeline: one column per day, aligned with the titer chart's time axis
-  const TL_ROWS = [["cf", "Feed", "% v/v", "slFeed"], ["cg", "Glucose to", "g/L", "slGlc"], ["ca", "Gal+", "", "swGal"], ["ct", "Temperature", "°C", "slT"], ["cp", "pH", "", "slPH"], ["co", "DO", "%", "slDO"]];
-  const MV_LAB = { VCD: ["VCD", "10⁶/mL"], viability: ["Viability", "%"], glucose: ["Glucose", "g/L"], lactate: ["Lactate", "g/L"], titer: ["Titer", "mg/L"] };
-  let popKey = "cf", showEnv = false;
-  function buildRows() { buildTimeline(); }
-  function buildTimeline() {
-    const days = [...Array(DAYS).keys()], lab = (n, u) => `<div class="tl-lab">${n}${u ? ` <span class="u">${u}</span>` : ""}</div>`;
-    let h = `<div class="tl-lab tl-hd">Day</div>` + days.map(d => `<div class="tl-hd" id="r${d}" data-day="${d}">${d}</div>`).join("") + `<div></div>`;
-    if (live.on) {
-      h += `<div class="tl-sec">Measured this run <span class="u">· morning sample, before feed · days after today show the forecast</span></div>`;
-      MV.forEach(v => { h += lab(...MV_LAB[v]) + days.map(d => d <= live.k
-        ? `<div class="tl-c" data-day="${d}"><input type="text" inputmode="decimal" class="num-in tl-num" dir="ltr" lang="en" id="m-${v}-${d}" aria-label="${v} day ${d}"></div>`
-        : `<div class="tl-c tl-pred" data-day="${d}" id="p-${v}-${d}"></div>`).join("") + `<div></div>`; });
-      h += `<div class="tl-sec">Inputs</div>`;
-    }
-    const envOn = showEnv || steps.some(s => s.pH != null || s.DO != null);
-    TL_ROWS.forEach(([k, n, u, sl]) => {
-      if ((k === "cp" || k === "co") && !envOn) return;
-      h += lab(n, u) + days.map(d => `<button type="button" class="tl-c tl-in" id="${k}${d}" data-day="${d}" data-row="${k}" aria-label="${n} day ${d}"></button>`).join("") + `<div></div>`; });
-    if (!envOn) h += `<div class="tl-lab"><button type="button" class="tl-toggle" id="envToggle">+ pH, DO</button></div><div style="grid-column: 2 / -1"></div>`;
-    h += lab("Basis", "") + days.map(d => `<div class="tl-c" data-day="${d}"><span class="basis" id="b${d}"></span></div>`).join("") + `<div></div>`;
-    $("timeline").innerHTML = h;
-    if ($("envToggle")) $("envToggle").addEventListener("click", () => { showEnv = true; buildTimeline(); fillRows(); run(); });
-    $("timeline").querySelectorAll(".tl-in").forEach(c => c.addEventListener("click", e => { e.stopPropagation(); popKey = c.dataset.row; openPop(+c.dataset.day); }));
-    if (live.on) for (let d = 0; d <= live.k; d++) MV.forEach(v => {
-      const el = $(`m-${v}-${d}`); const q = live.meas[d][v]; el.value = q == null ? "" : +(+q).toFixed(v === "titer" ? 0 : v === "viability" ? 1 : 2);
-      el.addEventListener("change", () => { const q = num(el.value);
-        if (Number.isNaN(q) || (q != null && q < 0)) { el.setCustomValidity("Enter a number"); el.reportValidity(); return; } el.setCustomValidity("");
-        live.meas[d][v] = q; el.value = q == null ? "" : q; live.source = "edited"; showSource(); run(); });
+  function buildRows() {
+    const tb = $("dayRows"); tb.innerHTML = "";
+    steps.forEach((s, d) => {
+      const tr = document.createElement("tr"); tr.id = "r" + d; tr.tabIndex = 0;
+      tr.innerHTML = `<td class="day">${d}</td><td class="v" id="cf${d}"></td><td class="v" id="cg${d}"></td><td class="v" id="ca${d}" style="text-align:center"></td><td class="v" id="ct${d}"></td><td class="v" id="cp${d}"></td><td class="v" id="co${d}"></td><td><span class="basis" id="b${d}"></span></td>`;
+      tr.addEventListener("click", () => selectDay(d));
+      tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectDay(d); } });
+      tb.appendChild(tr);
     });
   }
-  const POP_BLOCK = { cf: "slFeed", cg: "slGlc", ca: "swGal", ct: "slT", cp: "slPH", co: "slDO" };
-  function openPop(d) {
-    const ed = $("popover").querySelector(".editor");
-    Object.entries(POP_BLOCK).forEach(([k, id]) => { const blk = k === "ca" ? $(id).closest("label") : $(id).closest(".sl"); blk.hidden = k !== popKey; });
-    ed.querySelectorAll(":scope > p.note").forEach(p => { p.hidden = !(p.id === "scopeNote" || (popKey === "co" || popKey === "cp") && p.querySelector("code")); });
-    selectDay(d); $("popover").hidden = false; placePop();
-    const f = { cf: "slFeed", cg: "slGlc", ca: "swGal", ct: "slT", cp: "cbPH", co: "cbDO" }[popKey]; if ($(f)) $(f).focus({ preventScroll: true });
-  }
-  function placePop() {
-    const pop = $("popover"); if (pop.hidden) return;
-    const cell = $(popKey + sel), panel = $("chartsPanel"); if (!cell) return;
-    const pr = panel.getBoundingClientRect(), cr = cell.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
-    let left = cr.left - pr.left + cr.width / 2 - w / 2; left = Math.max(8, Math.min(left, pr.width - w - 8));
-    const below = window.innerHeight - cr.bottom > h + 12 || cr.top < h + 12;
-    pop.style.left = left + "px"; pop.style.top = (below ? cr.bottom - pr.top + 8 : cr.top - pr.top - h - 8) + "px";
-  }
-  function closePop() { $("popover").hidden = true; }
-  $("popClose").addEventListener("click", closePop);
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePop(); $("sgPanel").hidden = true; } });
-  document.addEventListener("mousedown", e => { const p = $("popover"); if (!p.hidden && !p.contains(e.target) && !e.target.closest(".tl-in")) closePop(); });
   function fillRows() {
     steps.forEach((s, d) => {
       const b = base[d];
@@ -716,9 +630,9 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
       set("cg" + d, s.glucose_target == null ? "–" : (+s.glucose_target).toFixed(1), !eq(s.glucose_target, b.glucose_target), s.glucose_target == null);
       set("ca" + d, s.galplus ? "✓" : "–", !!s.galplus !== !!b.galplus, !s.galplus);
       set("ct" + d, (+s.temperature).toFixed(1), !eq(s.temperature, b.temperature), false);
-      if ($("cp" + d)) set("cp" + d, s.pH == null ? "–" : (+s.pH).toFixed(2), !eq(s.pH, b.pH), s.pH == null);
-      if ($("co" + d)) set("co" + d, s.DO == null ? "–" : (+s.DO).toFixed(0), !eq(s.DO, b.DO), s.DO == null);
-      document.querySelectorAll(`#timeline [data-day="${d}"]`).forEach(c => c.classList.toggle("sel", d === sel));
+      set("cp" + d, s.pH == null ? "–" : (+s.pH).toFixed(2), !eq(s.pH, b.pH), s.pH == null);
+      set("co" + d, s.DO == null ? "–" : (+s.DO).toFixed(0), !eq(s.DO, b.DO), s.DO == null);
+      $("r" + d).classList.toggle("sel", d === sel);
     });
   }
   function syncEditor() {
@@ -746,7 +660,7 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     $("vDO").textContent = $("cbDO").checked ? (+$("slDO").value).toFixed(0) + " %" : "off";
     $("vSeedX").textContent = (+$("slSeedX").value).toFixed(2); $("vSeedV").textContent = (+$("slSeedV").value).toFixed(1) + " %";
   }
-  function selectDay(d) { sel = Math.min(Math.max(d, 0), DAYS - 1); fillRows(); syncEditor(); placePop(); }
+  function selectDay(d) { sel = Math.min(Math.max(d, 0), DAYS - 1); fillRows(); syncEditor(); }
   function applyEdit(field) {
     const f = +$("slFeed").value, g = +$("slGlc").value, tt = +$("slT").value, ga = $("swGal").checked;
     const targets = scope === "on" ? steps.map((_, d) => d).filter(d => d >= sel) : [sel];
@@ -804,7 +718,18 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     const v = Number(t); return isFinite(v) ? v : NaN;
   }
   const live = { on: false, k: 5, meas: Array.from({ length: DAYS + 1 }, () => ({})), source: "" };
-  function buildMeas() { buildTimeline(); fillRows(); }
+  function buildMeas() {
+    const tb = $("measRows"); tb.innerHTML = "";
+    for (let d = 0; d <= live.k; d++) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="day">${d}</td>` + MV.map(v => `<td><input type="text" inputmode="decimal" class="num-in" dir="ltr" lang="en" id="m-${v}-${d}" aria-label="${v} day ${d}"></td>`).join("");
+      tb.appendChild(tr);
+      MV.forEach(v => { const el = $(`m-${v}-${d}`); const q = live.meas[d][v]; el.value = q == null ? "" : +(+q).toFixed(v === "titer" ? 0 : v === "viability" ? 1 : 2);
+        el.addEventListener("change", () => { const q = num(el.value);
+          if (Number.isNaN(q) || (q != null && q < 0)) { el.setCustomValidity("Enter a number"); el.reportValidity(); return; } el.setCustomValidity("");
+          live.meas[d][v] = q; el.value = q == null ? "" : q; live.source = "edited"; showSource(); run(); }); });
+    }
+  }
   function showSource() { $("liveSource").textContent = live.source && live.source !== "edited" ? live.source : ""; }
   function fillFromReal(id) {
     const rr = Object.values(M.real).flat().find(r => r.id === id); if (!rr) return;
@@ -829,13 +754,11 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
   }
   function setMode(on) {
     live.on = on; $("modePlan").setAttribute("aria-pressed", !on); $("modeLive").setAttribute("aria-pressed", on);
-    $("livePanel").hidden = !on; $("sgPanel").hidden = true; $("sgOut").innerHTML = "";
+    $("livePanel").hidden = !on; $("sgPanel").hidden = !on; $("sgOut").innerHTML = "";
     if (on && !MV.some(v => live.meas[0][v] != null)) { const ex = (M.real[recipe] || [])[0]; if (ex) { fillFromReal(ex.id); } }
     if (on) selectDay(live.k);
     buildMeas(); fillRows(); run();
   }
-  $("sgOpen").addEventListener("click", () => { $("sgPanel").hidden = !$("sgPanel").hidden; });
-  $("sgClose").addEventListener("click", () => { $("sgPanel").hidden = true; });
   $("modePlan").addEventListener("click", () => setMode(false));
   $("modeLive").addEventListener("click", () => setMode(true));
   $("liveDay").addEventListener("change", () => { live.k = Math.min(Math.max(Math.round(num($("liveDay").value) || 5), 2), DAYS - 1); $("liveDay").value = live.k; buildMeas(); selectDay(live.k); $("sgOut").innerHTML = ""; run(); });
@@ -888,12 +811,12 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
       result = T.liveForecast(M, livePast(), steps);
       const th = result.theta[0], fe = result.fitErr;
       $("selfAdj").innerHTML = `<span><b>Self-adjusted to this run:</b> growth ×${th.toFixed(2)} (1.00 = typical NISTCHO run), forecast restarts from the day-${live.k} measurements.</span>
-        <span title="Back-test on 6 held-out runs: titer error for the remaining days fell from 13.7% to 7.6% with data to day 5.">Fit to days 0–${live.k}: titer ${fe.titer == null ? "–" : fe.titer.toFixed(0) + "%"}, VCD ${fe.VCD == null ? "–" : fe.VCD.toFixed(0) + "%"} error.</span>`;
+        <span>Fit to days 0–${live.k}: titer ${fe.titer == null ? "–" : fe.titer.toFixed(0) + "%"}, VCD ${fe.VCD == null ? "–" : fe.VCD.toFixed(0) + "%"} error. Back-test on 6 held-out runs: titer error for the remaining days fell from 13.7% to 7.6% with data to day 5.</span>`;
     } else {
       result = T.simulate(M, steps, init);
       if (live.on) $("selfAdj").innerHTML = `<span>Enter at least the day-0 VCD to use the measured data.</span>`;
     }
-    for (let d = 0; d < DAYS; d++) document.querySelectorAll(`#timeline [data-day="${d}"]`).forEach(c => c.classList.toggle("past", live.on && d < live.k));
+    for (let d = 0; d < DAYS; d++) $("r" + d).classList.toggle("past", live.on && d < live.k);
     result.support.forEach((s, d) => {
       const el = $("b" + d); el.className = "basis " + s;
       el.innerHTML = `<i class="dot ${s}"></i>${s === "data" ? "data" : s === "prior" ? "prior" : "extrap."}`;
@@ -937,7 +860,6 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
       <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range of the prediction</span>
       ${comp ? `<span><i class="sw dash" style="border-color:var(--comp)"></i>${comp.label}</span>` : ""}
       ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Measured · ${(M.real[recipe] || []).length} real runs of ${recipe}</span>` : ""}`;
-    if (live.on && result.k) for (let d = live.k + 1; d < DAYS; d++) MV.forEach(v => { const c = $(`p-${v}-${d}`); if (c) c.textContent = fmt(result.rows[d][v], v === "titer" ? 0 : v === "viability" ? 0 : v === "VCD" ? 1 : 2); });
     drawChart($("ch-titer"), "titer", 250);
     ["VCD", "viability", "glucose", "lactate"].forEach(v => drawChart($("ch-" + v), v, 170));
     // table view
@@ -954,7 +876,7 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     // opt: {title, unit, height, xmax, series:[{type:'band'|'line'|'dash'|'pts', xs, ys, lo, hi, color, label}], dec, ymaxCap}
     host.innerHTML = "";
     const head = document.createElement("div"); head.className = "ctitle";
-    const W = Math.max(host.clientWidth, 260), H = opt.height, pl = opt.pl || 40, pr = 10, pt = 8, pb = 22;
+    const W = Math.max(host.clientWidth, 260), H = opt.height, pl = 40, pr = 10, pt = 8, pb = 22;
     let ymax = 0, ymin = 0, over = false;
     opt.series.forEach(s => (s.hi || s.ys).forEach(v => { if (v != null && isFinite(v)) ymax = Math.max(ymax, v); }));
     if (opt.fixed) {               // fixed axis: the scale never moves while inputs change
@@ -1030,7 +952,7 @@ button.tl-in.edited { color: var(--accent-ink); font-weight: 600; border-color: 
     if (live.on && result.k) series.push({ type: "pts", own: true, xs: live.meas.slice(0, live.k + 1).map((_, d) => d), ys: live.meas.slice(0, live.k + 1).map(m => m[v] == null ? null : m[v] * sc), color: cssv("--ink"), label: "This run" });
     if (comp) series.push({ type: "dash", xs: comp.res.rows.map(r => r.day), ys: comp.res.rows.map(r => r[v] * sc), color: cssv("--comp"), label: comp.label });
     series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "Predicted", band: { lo, hi } });
-    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 200 : 168, pl: host.id === "ch-titer" ? 132 : 40, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v], today: live.on && result.k ? live.k : null });
+    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v], today: live.on && result.k ? live.k : null });
   }
 
   // ------------------------------------------------ shared helpers

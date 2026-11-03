@@ -10,12 +10,6 @@
     "mAb (IgG1κ) · 20 mL fed-batch, 37 °C · hybrid model": "آنتی‌بادی تک‌دودمانی (IgG1κ) · کشت خوراک‌دهی‌شدهٔ ۲۰ میلی‌لیتری، 37 °C · مدل ترکیبی",
     "Plan a run": "طراحی کشت", "Batches": "بچ‌ها", "Model": "مدل",
     // run plan
-    "+ pH, DO": "+ pH، DO", "Start of culture": "آغاز کشت", "Suggest inputs": "پیشنهاد ورودی‌ها", "Axis limits": "حدود محورها",
-    "Fixed, so the scale stays put while you change inputs.": "ثابت، تا با تغییر ورودی‌ها مقیاس جابه‌جا نشود.",
-    "Click a cell to edit that day. Inputs act at the start of each day, after the morning sample.": "برای ویرایش آن روز روی خانه کلیک کنید. ورودی‌ها در آغاز هر روز، پس از نمونه‌برداری صبح، اعمال می‌شوند.",
-    "Measured this run": "اندازه‌گیری‌شده در این کشت", "· morning sample, before feed · days after today show the forecast": "· نمونهٔ صبح، پیش از خوراک · روزهای پس از امروز پیش‌بینی را نشان می‌دهند",
-    "Inputs": "ورودی‌ها", "Glucose to": "گلوکز تا", "Basis": "پشتوانه", "Close editor": "بستن ویرایشگر", "Close suggestions": "بستن پیشنهادها",
-    "Inputs per day (click a cell to edit)": "ورودی‌های روزانه (برای ویرایش روی خانه کلیک کنید)",
     // running batch
     "New plan": "برنامهٔ جدید", "Running batch": "بچ در حال اجرا", "Mode": "حالت",
     "Measured up to day (today)": "اندازه‌گیری‌شده تا روز (امروز)", "Viab.": "زنده‌مانی", "Lac": "لاکتات",
@@ -173,14 +167,13 @@
     [/^Final viability (\d+)% ·$/, "زنده‌مانی نهایی $1٪ ·"],
     [/^growth ×([\d.]+) \(1\.00 = typical NISTCHO run\), forecast restarts from the day-(\d+) measurements\.$/, "رشد ×$1 (1.00 = کشت معمول NISTCHO)؛ پیش‌بینی از اندازه‌گیری‌های روز $2 از نو آغاز می‌شود."],
     [/^Fit to days 0–(\d+): titer (\S+) , VCD (\S+) error\. (.*)$/, "برازش روزهای 0 تا $1: خطای تیتر $2، VCD $3."],
-    [/^Fit to days 0–(\d+): titer (\S+), VCD (\S+) error\.$/, "برازش روزهای 0 تا $1: خطای تیتر $2، خطای VCD $3."],
     [/^Fit to days 0–(\d+): titer (\S+), VCD (\S+) error\. Back-test on 6 held-out runs: titer error for the remaining days fell from 13\.7% to 7\.6% with data to day 5\.$/, "برازش روزهای 0 تا $1: خطای تیتر $2، خطای VCD $3. آزمون گذشته‌نگر روی ۶ کشت کنارگذاشته: با داده تا روز ۵، خطای تیتر روزهای باقی‌مانده از 13.7% به 7.6% کاهش یافت."],
     [/^Example: measured values of real run (\S+) \(recipe (\S+)\), days 0–(\d+)\. Replace them with your own\.$/, "نمونه: مقادیر اندازه‌گیری‌شدهٔ کشت واقعی $1 (دستورالعمل $2)، روزهای 0 تا $3. آن‌ها را با داده‌های خود جایگزین کنید."],
     [/^Pasted data: (\d+) samples, days 0–(\d+)\.$/, "دادهٔ چسبانده‌شده: $1 نمونه، روزهای 0 تا $2."],
     [/^Days 0–(\d+) measured · (\d+) of (\d+) remaining days within real data$/, "روزهای 0 تا $1 اندازه‌گیری‌شده · $2 از $3 روز باقی‌مانده در محدودهٔ داده‌های واقعی"],
     [/^Days 0–(\d+) measured ·$/, "روزهای 0 تا $1 اندازه‌گیری‌شده ·"], [/^(\d+) of (\d+) remaining days within real data$/, "$1 از $2 روز باقی‌مانده در محدودهٔ داده‌های واقعی"],
     [/^No combination keeps final viability at or above (\d+)%\. Lower the limit or check the measured data\.$/, "هیچ ترکیبی زنده‌مانی نهایی را در $1٪ یا بالاتر نگه نمی‌دارد. حد را پایین بیاورید یا داده‌ها را بررسی کنید."],
-    [/^(\S+) day (\d+)$/, "$1 روز $2"], [/^(.+) day (\d+)$/, "$1 روز $2"],
+    [/^(\S+) day (\d+)$/, "$1 روز $2"],
     [/^Day (\d+)$/, "روز $1"], [/^day (\d+)$/, "روز $1"], [/^Day (\d+) only$/, "فقط روز $1"], [/^Day (\d+) onward$/, "از روز $1 به بعد"],
     [/^Changes apply from day (\d+) to day (\d+)\. .*$/, "تغییرات از روز $1 تا روز $2 اعمال می‌شوند. خوراک، گلوکز و Gal+ فقط در روزهای دارای خوراک تغییر می‌کنند؛ دما، pH و DO در همهٔ روزها."],
     [/^Changes apply to day (\d+) only\.$/, "تغییرات فقط بر روز $1 اعمال می‌شوند."],
@@ -231,7 +224,7 @@
   // ---- applying it to the page
   let lang = "en", busy = false;
   const orig = new WeakMap();        // text node -> { en, fa }
-  const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA"]);
+  const SKIP = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA", "OPTION"]);
   const ATTRS = ["aria-label", "placeholder", "title"];
   function pass() {
     busy = true;

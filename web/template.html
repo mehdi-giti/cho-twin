@@ -265,6 +265,7 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 .sg-opt .what { font-size: 0.84rem; }
 .sg-opt .num { font-family: var(--f-mono); font-size: 1.25rem; }
 .sg-opt .gain { font-size: 0.8rem; }
+.sg-opt.applied { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -673,6 +674,7 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
       if (field === "DO") s.DO = $("cbDO").checked ? +$("slDO").value : null;
     });
     showVals(); fillRows(); syncEditor(); run();
+    if (appliedOpt != null) markApplied(null);
   }
   $("slFeed").addEventListener("input", () => applyEdit("feed"));
   $("slGlc").addEventListener("input", () => applyEdit("glc"));
@@ -773,6 +775,15 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
     return [daily ? "Feed 2.5% every day" : "Feed 5% every 48 h", g ? `glucose to ${g} g/L` : "no glucose top-up", gal ? "with Gal+" : "no Gal+",
       sh >= 0 ? `${st[sh].temperature} °C from day ${sh}` : "37 °C"];
   }
+  // only one option can be the applied one; editing the plan by hand clears the mark
+  let appliedOpt = null;
+  function markApplied(i) {
+    appliedOpt = i;
+    $("sgOut").querySelectorAll("button[data-opt]").forEach(b => {
+      const on = +b.dataset.opt === i; b.textContent = on ? "Applied ✓" : "Apply to plan"; b.disabled = on;
+      b.closest(".sg-opt").classList.toggle("applied", on);
+    });
+  }
   $("sgVia").addEventListener("input", () => { $("sgViaV").textContent = $("sgVia").value; });
   $("sgGo").addEventListener("click", () => {
     $("sgGo").disabled = true; $("sgOut").innerHTML = `<p class="note">Searching…</p>`;
@@ -788,7 +799,8 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
           <button class="btn small" data-opt="${i}">Apply to plan</button></div>`; }).join("");
       $("sgOut").querySelectorAll("button[data-opt]").forEach(b => b.addEventListener("click", () => {
         steps = s.options[+b.dataset.opt].steps.map(x => Object.assign({}, x)); fillRows(); syncEditor(); run();
-        b.textContent = "Applied"; }));
+        markApplied(+b.dataset.opt); }));
+      markApplied(null);
     }, 30);
   });
 

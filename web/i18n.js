@@ -20,7 +20,7 @@
     "Suggest inputs from today": "پیشنهاد ورودی‌ها از امروز", "Keep final viability ≥": "زنده‌مانی نهایی ≥", "Allow a temperature shift (literature prior)": "اجازهٔ تغییر دما (بر پایهٔ منابع علمی)",
     "Find best inputs": "یافتن بهترین ورودی‌ها", "Searching…": "در حال جست‌وجو…", "Suggested inputs": "ورودی‌های پیشنهادی",
     "The search tries every combination of feeding every 24 h (2.5%) or 48 h (5%), glucose top-up 2–8 g/L, Gal+ on or off and, if allowed, a shift to 33–35 °C, and ranks them by predicted day-11 titer. Each setting was tested in real runs, but most combinations were not: treat a suggestion as the next experiment to run, not a guaranteed result.": "جست‌وجو همهٔ ترکیب‌های خوراک‌دهی هر ۲۴ ساعت (۲٫۵٪) یا هر ۴۸ ساعت (۵٪)، تکمیل گلوکز 2 تا 8 g/L، Gal+ روشن یا خاموش و در صورت اجازه، کاهش دما به 33 تا 35 °C را می‌آزماید و آن‌ها را بر اساس تیتر پیش‌بینی‌شدهٔ روز ۱۱ رتبه‌بندی می‌کند. هر تنظیم در کشت‌های واقعی آزموده شده، اما بیشتر ترکیب‌ها نه: پیشنهاد را آزمایش بعدی بدانید، نه نتیجهٔ تضمینی.",
-    "g/L predicted titer, day 11": "g/L تیتر پیش‌بینی‌شده، روز ۱۱", "Apply to plan": "اعمال بر برنامه", "Applied": "اعمال شد",
+    "g/L predicted titer, day 11": "g/L تیتر پیش‌بینی‌شده، روز ۱۱", "Apply to plan": "اعمال بر برنامه", "Applied": "اعمال شد", "Applied ✓": "اعمال شد ✓",
     "settings within real data": "تنظیمات در محدودهٔ داده‌های واقعی", "uses a literature prior": "بر پایهٔ منابع علمی", "Feed 2.5% every day": "خوراک ۲٫۵٪ هر روز", "Feed 5% every 48 h": "خوراک ۵٪ هر ۴۸ ساعت",
     "no glucose top-up": "بدون تکمیل گلوکز", "with Gal+": "با Gal+", "no Gal+": "بدون Gal+", "37 °C": "37 °C",
     "Measured · this run": "اندازه‌گیری‌شده · این کشت", "Measured, this run:": "اندازه‌گیری‌شده، این کشت:", "today": "امروز",

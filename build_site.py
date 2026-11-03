@@ -9,7 +9,8 @@ repo = os.environ.get("GITHUB_REPOSITORY", "")
 branch = os.environ.get("GITHUB_REF_NAME", "main")
 tpl = open(os.path.join(ROOT, "web", "template.html"), encoding="utf-8").read()
 body = (tpl.replace("/*MODEL_JSON*/", open(os.path.join(ROOT, "web", "model.json"), encoding="utf-8").read())
-           .replace("/*TWIN_JS*/", open(os.path.join(ROOT, "web", "twin.js"), encoding="utf-8").read()))
+           .replace("/*TWIN_JS*/", open(os.path.join(ROOT, "web", "twin.js"), encoding="utf-8").read())
+           .replace("/*VERSION*/", pl.champion()))
 site_cfg = f"<script>window.SITE = {json.dumps({'repo': repo, 'branch': branch})};</script>\n"
 html = ("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n"

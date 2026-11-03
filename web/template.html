@@ -46,8 +46,8 @@ header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-cont
 .plan { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
-select, input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
-input[type=number] { width: 5.4em; text-align: right; }
+select, input[type=number], input.num-in { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+input[type=number], input.num-in { width: 5.4em; text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 .recipe-note { color: var(--ink-2); font-size: 0.82rem; margin: 0; }
 .quick { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 0.84rem; color: var(--ink-2); }
 .quick .row { gap: 6px; }
@@ -215,7 +215,7 @@ table.log th.n { text-align: right; }
 .axes { font-size: 0.8rem; color: var(--ink-2); }
 .axes summary { cursor: pointer; }
 .axes-grid { display: grid; grid-template-columns: auto auto auto; gap: 6px 10px; align-items: center; margin-top: 8px; }
-.axes-grid input { width: 5.2em; padding: 3px 6px; }
+.axes-grid input.num-in { width: 5.2em; padding: 3px 6px; }
 .ctitle .err { font-size: 0.72rem; color: var(--muted); font-family: var(--f-body); }
 .ctitle .off { font-size: 0.72rem; color: var(--prior); font-family: var(--f-body); }
 .kpi .meas { font-size: 0.78rem; color: var(--ink); }
@@ -247,8 +247,8 @@ table.log th.n { text-align: right; }
 
 /* running batch */
 .live { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--edit-bg); }
-.live .row input[type=number] { width: 4.2em; }
-table.meas input[type=number] { width: 100%; min-width: 0; padding: 3px 4px; font-size: 0.78rem; }
+.live .row input.num-in { width: 4.2em; }
+table.meas input.num-in { width: 100%; min-width: 0; padding: 3px 4px; font-size: 0.78rem; }
 table.meas { table-layout: fixed; }
 table.meas th:first-child, table.meas td:first-child { width: 2.4em; }
 table.meas td { padding: 2px 2px; }
@@ -308,7 +308,7 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
       <div class="live" id="livePanel" hidden>
         <div class="row" style="justify-content:space-between">
           <label class="label" for="liveDay">Measured up to day (today)</label>
-          <input type="number" id="liveDay" min="2" max="10" step="1" value="5">
+          <input type="text" inputmode="numeric" class="num-in" id="liveDay" value="5" dir="ltr" lang="en">
         </div>
         <div class="tablewrap">
           <table class="days meas" aria-label="Measured values per day">
@@ -707,15 +707,25 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 
   // ------------------------------------------------ running batch: measured data to day k
   const MV = ["VCD", "viability", "glucose", "lactate", "titer"];
+  // read a number typed with Latin, Persian (۰-۹) or Arabic-Indic (٠-٩) digits; ٫ or , as decimal mark
+  function num(s) {
+    if (s == null) return null;
+    const t = String(s).trim().replace(/[۰-۹]/g, c => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(c)]).replace(/[٠-٩]/g, c => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(c)])
+      .replace(/[٫,]/g, ".").replace(/[٬\s]/g, "");
+    if (t === "") return null;
+    const v = Number(t); return isFinite(v) ? v : NaN;
+  }
   const live = { on: false, k: 5, meas: Array.from({ length: DAYS + 1 }, () => ({})), source: "" };
   function buildMeas() {
     const tb = $("measRows"); tb.innerHTML = "";
     for (let d = 0; d <= live.k; d++) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="day">${d}</td>` + MV.map(v => `<td><input type="number" step="any" min="0" id="m-${v}-${d}" aria-label="${v} day ${d}"></td>`).join("");
+      tr.innerHTML = `<td class="day">${d}</td>` + MV.map(v => `<td><input type="text" inputmode="decimal" class="num-in" dir="ltr" lang="en" id="m-${v}-${d}" aria-label="${v} day ${d}"></td>`).join("");
       tb.appendChild(tr);
       MV.forEach(v => { const el = $(`m-${v}-${d}`); const q = live.meas[d][v]; el.value = q == null ? "" : +(+q).toFixed(v === "titer" ? 0 : v === "viability" ? 1 : 2);
-        el.addEventListener("change", () => { live.meas[d][v] = el.value === "" ? null : +el.value; live.source = "edited"; showSource(); run(); }); });
+        el.addEventListener("change", () => { const q = num(el.value);
+          if (Number.isNaN(q) || (q != null && q < 0)) { el.setCustomValidity("Enter a number"); el.reportValidity(); return; } el.setCustomValidity("");
+          live.meas[d][v] = q; el.value = q == null ? "" : q; live.source = "edited"; showSource(); run(); }); });
     }
   }
   function showSource() { $("liveSource").textContent = live.source && live.source !== "edited" ? live.source : ""; }
@@ -749,7 +759,7 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
   }
   $("modePlan").addEventListener("click", () => setMode(false));
   $("modeLive").addEventListener("click", () => setMode(true));
-  $("liveDay").addEventListener("change", () => { live.k = Math.min(Math.max(Math.round(+$("liveDay").value || 5), 2), DAYS - 1); $("liveDay").value = live.k; buildMeas(); selectDay(live.k); $("sgOut").innerHTML = ""; run(); });
+  $("liveDay").addEventListener("change", () => { live.k = Math.min(Math.max(Math.round(num($("liveDay").value) || 5), 2), DAYS - 1); $("liveDay").value = live.k; buildMeas(); selectDay(live.k); $("sgOut").innerHTML = ""; run(); });
   Object.values(M.real).flat().forEach(r => { const o = document.createElement("option"); o.value = r.id; o.textContent = r.id.replace("D2_", "").replace("p_", "+ ").replace("_", " "); $("liveDemo").appendChild(o); });
   $("liveDemo").addEventListener("change", e => { if (e.target.value) fillFromReal(e.target.value); e.target.value = ""; });
   $("livePasteBtn").addEventListener("click", () => { $("livePasteBox").hidden = !$("livePasteBox").hidden; });
@@ -955,10 +965,10 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 
   function buildAxes() {
     let h = `<span class="label">Output</span><span class="label">Min</span><span class="label">Max</span>`;
-    Object.entries(VARS).forEach(([k, v]) => { h += `<span>${v.name} <span class="note">${v.unit}</span></span><input type="number" id="ax-${k}-min" value="${v.ymin}" step="any" aria-label="${v.name} axis minimum"><input type="number" id="ax-${k}-max" value="${v.ymax}" step="any" aria-label="${v.name} axis maximum">`; });
+    Object.entries(VARS).forEach(([k, v]) => { h += `<span>${v.name} <span class="note">${v.unit}</span></span><input type="text" inputmode="decimal" class="num-in" dir="ltr" lang="en" id="ax-${k}-min" value="${v.ymin}" step="any" aria-label="${v.name} axis minimum"><input type="text" inputmode="decimal" class="num-in" dir="ltr" lang="en" id="ax-${k}-max" value="${v.ymax}" step="any" aria-label="${v.name} axis maximum">`; });
     $("axesGrid").innerHTML = h;
     Object.keys(VARS).forEach(k => ["min", "max"].forEach(e => $(`ax-${k}-${e}`).addEventListener("change", () => {
-      const a = +$(`ax-${k}-min`).value, b = +$(`ax-${k}-max`).value;
+      const a = num($(`ax-${k}-min`).value), b = num($(`ax-${k}-max`).value);
       if (isFinite(a) && isFinite(b) && b > a) { VARS[k].ymin = a; VARS[k].ymax = b; saveAxes(); redraw(); }
     })));
   }

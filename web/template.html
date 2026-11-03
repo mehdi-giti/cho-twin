@@ -72,7 +72,7 @@ table.days td.galcell { text-align: center; }
 .gal.edited { outline: 2px solid var(--accent); outline-offset: 1px; }
 .basis { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.05em; }
 .dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
-.dot.data { background: var(--good); } .dot.prior { background: var(--prior); } .dot.extrapol { background: var(--extra); }
+.dot.data { background: var(--good); } .dot.prior { background: var(--prior); } .dot.extrapol { background: var(--extra); } .dot.done { background: var(--ink-2); border-radius: 50%; }
 .basis.data { color: var(--good); } .basis.prior { color: var(--prior); } .basis.extrapol { color: var(--extra); }
 .legend-basis { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--ink-2); }
 .legend-basis span { display: inline-flex; align-items: center; gap: 6px; }
@@ -244,6 +244,27 @@ table.log th.n { text-align: right; }
 :root[lang="fa"] .tip { direction: rtl; text-align: right; }
 :root[lang="fa"] .top-right { align-items: flex-start; }
 @media (max-width: 760px) { .top-right { align-items: flex-start; } }
+
+/* running batch */
+.live { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--edit-bg); }
+.live .row input[type=number] { width: 4.2em; }
+table.meas input[type=number] { width: 100%; min-width: 0; padding: 3px 4px; font-size: 0.78rem; }
+table.meas { table-layout: fixed; }
+table.meas th:first-child, table.meas td:first-child { width: 2.4em; }
+table.meas td { padding: 2px 2px; }
+table.days tbody tr.past td { color: var(--ink-2); }
+table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
+.adj { font-size: 0.82rem; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+.adj b { color: var(--ink); font-weight: 600; }
+.sg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sg-ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 0.84rem; }
+.sg-ctrl input[type=range] { width: 140px; accent-color: var(--accent); }
+.sg-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .sg-opts { grid-template-columns: minmax(0, 1fr); } }
+.sg-opt { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); min-width: 0; }
+.sg-opt .what { font-size: 0.84rem; }
+.sg-opt .num { font-family: var(--f-mono); font-size: 1.25rem; }
+.sg-opt .gain { font-size: 0.8rem; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -279,6 +300,34 @@ table.log th.n { text-align: right; }
         <label class="label" for="recipe">Start from a real feeding strategy</label>
         <select id="recipe"></select>
         <p class="recipe-note" id="recipeNote"></p>
+      </div>
+      <div class="seg" role="group" aria-label="Mode" style="align-self:flex-start">
+        <button id="modePlan" aria-pressed="true">New plan</button>
+        <button id="modeLive" aria-pressed="false">Running batch</button>
+      </div>
+      <div class="live" id="livePanel" hidden>
+        <div class="row" style="justify-content:space-between">
+          <label class="label" for="liveDay">Measured up to day (today)</label>
+          <input type="number" id="liveDay" min="2" max="10" step="1" value="5">
+        </div>
+        <div class="tablewrap">
+          <table class="days meas" aria-label="Measured values per day">
+            <thead><tr><th>Day</th><th>VCD<br>10⁶/mL</th><th>Viab.<br>%</th><th>Glc<br>g/L</th><th>Lac<br>g/L</th><th>Titer<br>mg/L</th></tr></thead>
+            <tbody id="measRows"></tbody>
+          </table>
+        </div>
+        <p class="note" style="margin:0">Morning samples, before that day's feed; leave blank what was not measured. The inputs already applied on days before today go in the day table below.</p>
+        <div class="row">
+          <select id="liveDemo" aria-label="Fill with a real run"><option value="">Fill with a real run…</option></select>
+          <button class="btn small" id="livePasteBtn">Paste CSV</button>
+          <button class="btn small" id="liveClear">Clear</button>
+        </div>
+        <div id="livePasteBox" hidden class="stack" style="gap:6px">
+          <textarea id="livePaste" rows="5" aria-label="Running batch CSV" placeholder="time_h,VCD,viability,glucose,lactate,titer,feed_pct,glucose_target,galplus,temperature"></textarea>
+          <button class="btn small" id="livePasteGo" style="align-self:flex-start">Use pasted data</button>
+        </div>
+        <p class="note" id="liveSource" style="margin:0"></p>
+        <div class="adj" id="selfAdj"></div>
       </div>
 
       <div class="editor" aria-label="Edit inputs">
@@ -353,6 +402,19 @@ table.log th.n { text-align: right; }
     <!-- READOUT -->
     <main class="readout" aria-label="Prediction">
       <div class="kpis" id="kpis"></div>
+      <section class="panel stack" id="sgPanel" hidden aria-label="Suggested inputs">
+        <div class="sg-head">
+          <h2 id="sgTitle">Suggest inputs from today</h2>
+          <div class="sg-ctrl">
+            <label for="sgVia">Keep final viability ≥ <b id="sgViaV">80</b>%</label>
+            <input type="range" id="sgVia" min="50" max="95" step="5" value="80">
+            <label class="toggle"><input type="checkbox" id="sgT"> Allow a temperature shift (literature prior)</label>
+            <button class="btn primary" id="sgGo">Find best inputs</button>
+          </div>
+        </div>
+        <div id="sgOut" class="sg-opts"></div>
+        <p class="note" style="margin:0">The search tries every combination of feeding every 24 h (2.5%) or 48 h (5%), glucose top-up 2–8 g/L, Gal+ on or off and, if allowed, a shift to 33–35 °C, and ranks them by predicted day-11 titer. Each setting was tested in real runs, but most combinations were not: treat a suggestion as the next experiment to run, not a guaranteed result.</p>
+      </section>
       <div class="panel charts">
         <div class="chart-head">
           <div class="series-legend" id="seriesLegend"></div>
@@ -643,15 +705,101 @@ table.log th.n { text-align: right; }
       || Math.abs(+$("slSeedX").value - 0.4) > 1e-9 || Math.abs(+$("slSeedV").value - 97.5) > 1e-9;
   }
 
+  // ------------------------------------------------ running batch: measured data to day k
+  const MV = ["VCD", "viability", "glucose", "lactate", "titer"];
+  const live = { on: false, k: 5, meas: Array.from({ length: DAYS + 1 }, () => ({})), source: "" };
+  function buildMeas() {
+    const tb = $("measRows"); tb.innerHTML = "";
+    for (let d = 0; d <= live.k; d++) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="day">${d}</td>` + MV.map(v => `<td><input type="number" step="any" min="0" id="m-${v}-${d}" aria-label="${v} day ${d}"></td>`).join("");
+      tb.appendChild(tr);
+      MV.forEach(v => { const el = $(`m-${v}-${d}`); const q = live.meas[d][v]; el.value = q == null ? "" : +(+q).toFixed(v === "titer" ? 0 : v === "viability" ? 1 : 2);
+        el.addEventListener("change", () => { live.meas[d][v] = el.value === "" ? null : +el.value; live.source = "edited"; showSource(); run(); }); });
+    }
+  }
+  function showSource() { $("liveSource").textContent = live.source && live.source !== "edited" ? live.source : ""; }
+  function fillFromReal(id) {
+    const rr = Object.values(M.real).flat().find(r => r.id === id); if (!rr) return;
+    live.meas = Array.from({ length: DAYS + 1 }, () => ({}));
+    rr.day.forEach((dd, i) => { const d = Math.round(dd); if (d <= DAYS) MV.forEach(v => { if (rr[v][i] != null) live.meas[d][v] = rr[v][i]; }); });
+    const rec = Object.keys(M.real).find(k => M.real[k].includes(rr));
+    if (rec && rec !== recipe) { recipe = rec; $("recipe").value = rec; base = T.protocol(rec, DAYS); $("recipeNote").textContent = NOTES[rec]; }
+    steps = T.protocol(recipe, DAYS);     // inputs applied so far = that run's recipe
+    live.source = `Example: measured values of real run ${id} (recipe ${recipe}), days 0–${live.k}. Replace them with your own.`;
+    buildMeas(); showSource(); fillRows(); syncEditor(); run();
+  }
+  function useCSV(text) {
+    const p = parseCSV(text); if (!p.rows.length || !p.header.includes("time_h")) { $("liveSource").textContent = "Could not read the pasted data: a time_h column is needed."; return; }
+    live.meas = Array.from({ length: DAYS + 1 }, () => ({})); let kmax = 0;
+    p.rows.forEach(r => { const d = Math.round(r.time_h / 24); if (d < 0 || d > DAYS) return; kmax = Math.max(kmax, d);
+      MV.forEach(v => { if (r[v] != null && !isNaN(r[v])) live.meas[d][v] = r[v]; });
+      if (d < DAYS && p.header.includes("feed_pct")) steps[d] = { feed_pct: r.feed_pct || 0, glucose_target: r.glucose_target || null, galplus: !!r.galplus,
+        temperature: r.temperature ?? 37, pH: r.pH ?? null, DO: r.DO ?? null }; });
+    live.k = Math.min(Math.max(kmax, 2), DAYS - 1); $("liveDay").value = live.k;
+    live.source = `Pasted data: ${p.rows.length} samples, days 0–${live.k}.`;
+    buildMeas(); showSource(); fillRows(); selectDay(live.k); run();
+  }
+  function setMode(on) {
+    live.on = on; $("modePlan").setAttribute("aria-pressed", !on); $("modeLive").setAttribute("aria-pressed", on);
+    $("livePanel").hidden = !on; $("sgPanel").hidden = !on; $("sgOut").innerHTML = "";
+    if (on && !MV.some(v => live.meas[0][v] != null)) { const ex = (M.real[recipe] || [])[0]; if (ex) { fillFromReal(ex.id); } }
+    if (on) selectDay(live.k);
+    buildMeas(); fillRows(); run();
+  }
+  $("modePlan").addEventListener("click", () => setMode(false));
+  $("modeLive").addEventListener("click", () => setMode(true));
+  $("liveDay").addEventListener("change", () => { live.k = Math.min(Math.max(Math.round(+$("liveDay").value || 5), 2), DAYS - 1); $("liveDay").value = live.k; buildMeas(); selectDay(live.k); $("sgOut").innerHTML = ""; run(); });
+  Object.values(M.real).flat().forEach(r => { const o = document.createElement("option"); o.value = r.id; o.textContent = r.id.replace("D2_", "").replace("p_", "+ ").replace("_", " "); $("liveDemo").appendChild(o); });
+  $("liveDemo").addEventListener("change", e => { if (e.target.value) fillFromReal(e.target.value); e.target.value = ""; });
+  $("livePasteBtn").addEventListener("click", () => { $("livePasteBox").hidden = !$("livePasteBox").hidden; });
+  $("livePasteGo").addEventListener("click", () => { if ($("livePaste").value.trim()) useCSV($("livePaste").value); });
+  $("liveClear").addEventListener("click", () => { live.meas = Array.from({ length: DAYS + 1 }, () => ({})); live.meas[0] = { VCD: 0.4, viability: 97.5, glucose: 8 }; live.source = ""; buildMeas(); showSource(); run(); });
+  function livePast() { return live.meas.slice(0, live.k + 1).map(m => Object.assign({}, m)); }
+  function describeSteps(st) {
+    const f = st.filter((s, d) => d >= live.k && s.feed_pct > 0), daily = f.length > 1 && st.slice(live.k).every((s, i, a) => i === 0 || i === a.length - 1 || s.feed_pct > 0 || st[live.k + i - 1].feed_pct > 0) && f[0].feed_pct < 4;
+    const g = f.length ? f[0].glucose_target : null, gal = f.some(s => s.galplus);
+    const sh = st.findIndex((s, d) => d >= live.k && Math.abs(s.temperature - 37) > 0.25);
+    return [daily ? "Feed 2.5% every day" : "Feed 5% every 48 h", g ? `glucose to ${g} g/L` : "no glucose top-up", gal ? "with Gal+" : "no Gal+",
+      sh >= 0 ? `${st[sh].temperature} °C from day ${sh}` : "37 °C"];
+  }
+  $("sgVia").addEventListener("input", () => { $("sgViaV").textContent = $("sgVia").value; });
+  $("sgGo").addEventListener("click", () => {
+    $("sgGo").disabled = true; $("sgOut").innerHTML = `<p class="note">Searching…</p>`;
+    setTimeout(() => {
+      const s = T.suggest(M, livePast(), steps, { minViability: +$("sgVia").value, allowTemperature: $("sgT").checked });
+      $("sgGo").disabled = false;
+      if (!s.options.length) { $("sgOut").innerHTML = `<p class="note">No combination keeps final viability at or above ${$("sgVia").value}%. Lower the limit or check the measured data.</p>`; return; }
+      $("sgOut").innerHTML = s.options.map((o, i) => { const g = (o.titer / s.current.titer - 1) * 100;
+        return `<div class="sg-opt"><span class="label">Option ${i + 1}</span><span class="what">${describeSteps(o.steps).map(x => `<span>${esc(x)}</span>`).join(" · ")}</span>
+          <span><span class="num">${(o.titer / 1000).toFixed(2)}</span> <span class="note">g/L predicted titer, day 11</span></span>
+          <span class="gain delta ${g >= 0 ? "up" : "down"}">${g >= 0 ? "+" : ""}${g.toFixed(0)}% vs current plan</span>
+          <span class="note">Final viability ${o.viability.toFixed(0)}% · <span class="basis ${o.basis}"><i class="dot ${o.basis}"></i>${o.basis === "data" ? "settings within real data" : o.basis === "prior" ? "uses a literature prior" : "outside tested range"}</span></span>
+          <button class="btn small" data-opt="${i}">Apply to plan</button></div>`; }).join("");
+      $("sgOut").querySelectorAll("button[data-opt]").forEach(b => b.addEventListener("click", () => {
+        steps = s.options[+b.dataset.opt].steps.map(x => Object.assign({}, x)); fillRows(); syncEditor(); run();
+        b.textContent = "Applied"; }));
+    }, 30);
+  });
+
   // ------------------------------------------------ simulate + render
   function run() {
     const init = { VCD: +$("slSeedX").value, viability: +$("slSeedV").value, glucose: 8.0 };
-    result = T.simulate(M, steps, init);
+    if (live.on && live.meas[0].VCD > 0) {
+      result = T.liveForecast(M, livePast(), steps);
+      const th = result.theta[0], fe = result.fitErr;
+      $("selfAdj").innerHTML = `<span><b>Self-adjusted to this run:</b> growth ×${th.toFixed(2)} (1.00 = typical NISTCHO run), forecast restarts from the day-${live.k} measurements.</span>
+        <span>Fit to days 0–${live.k}: titer ${fe.titer == null ? "–" : fe.titer.toFixed(0) + "%"}, VCD ${fe.VCD == null ? "–" : fe.VCD.toFixed(0) + "%"} error. Back-test on 6 held-out runs: titer error for the remaining days fell from 13.7% to 7.6% with data to day 5.</span>`;
+    } else {
+      result = T.simulate(M, steps, init);
+      if (live.on) $("selfAdj").innerHTML = `<span>Enter at least the day-0 VCD to use the measured data.</span>`;
+    }
+    for (let d = 0; d < DAYS; d++) $("r" + d).classList.toggle("past", live.on && d < live.k);
     result.support.forEach((s, d) => {
       const el = $("b" + d); el.className = "basis " + s;
       el.innerHTML = `<i class="dot ${s}"></i>${s === "data" ? "data" : s === "prior" ? "prior" : "extrap."}`;
       el.innerHTML = `<i class="dot ${s}"></i>`;
-      el.title = s === "data" ? "Within real data: inputs inside the real runs" : s === "prior" ? "Literature prior: temperature, pH or DO effect not covered by real runs" : "Outside tested range: feed or glucose beyond the real runs";
+      el.title = s === "done" ? "Already done: measured data used" : s === "data" ? "Within real data: inputs inside the real runs" : s === "prior" ? "Literature prior: temperature, pH or DO effect not covered by real runs" : "Outside tested range: feed or glucose beyond the real runs";
     });
     render();
   }
@@ -663,12 +811,12 @@ table.log th.n { text-align: right; }
       const dv = (k.titer / comp.res.kpi.titer - 1) * 100;
       delta = `<span class="delta ${dv >= 0 ? "up" : "down"}">${dv >= 0 ? "+" : ""}${dv.toFixed(0)}% vs ${comp.label}</span>`;
     }
-    const nd = result.support.length;
+    const nd = result.support.length - (k.nDone || 0);
     const basisTxt = k.nExtrapol ? `${k.nExtrapol} day${k.nExtrapol > 1 ? "s" : ""} outside tested range` : k.nPrior ? `${k.nPrior} day${k.nPrior > 1 ? "s" : ""} use a literature prior` : `All ${nd} days within real data`;
     // measured values of the real replicates of this recipe (only when the plan is the unedited recipe)
     const reps = (M.real[recipe] || []).filter(r => r.day[r.day.length - 1] >= 10);
     const measured = (v, sc, dec) => {
-      if (isEdited() || !reps.length) return "";
+      if (live.on || isEdited() || !reps.length) return "";
       const vals = reps.map(r => { const ok = r[v].map((q, i) => [r.day[i], q]).filter(p => p[1] != null); return ok.length ? ok[ok.length - 1][1] * sc : null; }).filter(q => q != null);
       if (!vals.length) return "";
       const lo = Math.min(...vals), hi = Math.max(...vals);
@@ -684,9 +832,9 @@ table.log th.n { text-align: right; }
         <span class="sub">80% range ${fmt(k.viability_lo, 0)}–${fmt(k.viability_hi, 0)}%</span>${measured("viability", 1, 0)}</div>
       <div class="kpi basis-kpi"><span class="label">Basis of this prediction</span>
         <span class="v basis ${basisCls}" style="text-transform:none;letter-spacing:0;font-size:1rem"><i class="dot ${basisCls}"></i>${basisTxt}</span>
-        <span class="sub">${k.nData} of ${nd} days within real data</span></div>`;
+        <span class="sub">${live.on && k.nDone ? `Days 0–${k.nDone} measured · ` : ""}${k.nData} of ${nd} ${live.on && k.nDone ? "remaining " : ""}days within real data</span></div>`;
     const showReal = $("showReal").checked && (M.real[recipe] || []).length;
-    $("seriesLegend").innerHTML = `<span><i class="sw" style="border-color:var(--accent)"></i>Predicted · this plan</span>
+    $("seriesLegend").innerHTML = `${live.on && k.nDone ? `<span><i class="sw pt" style="background:var(--ink);width:10px;height:10px"></i>Measured · this run</span>` : ""}<span><i class="sw" style="border-color:var(--accent)"></i>Predicted · this plan</span>
       <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range of the prediction</span>
       ${comp ? `<span><i class="sw dash" style="border-color:var(--comp)"></i>${comp.label}</span>` : ""}
       ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Measured · ${(M.real[recipe] || []).length} real runs of ${recipe}</span>` : ""}`;
@@ -736,9 +884,13 @@ table.log th.n { text-align: right; }
         svg.appendChild(svgEl("path", { d: "M" + path(s.xs, s.ys), fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round",
           "stroke-dasharray": s.type === "dash" ? "5 4" : "none" }));
       } else if (s.type === "pts") {
-        s.xs.forEach((xv, i) => { if (s.ys[i] != null) svg.appendChild(svgEl("circle", { cx: x(xv), cy: y(s.ys[i]), r: 3, fill: s.color, "fill-opacity": 0.75, stroke: cssv("--panel"), "stroke-width": 1 })); });
+        s.xs.forEach((xv, i) => { if (s.ys[i] != null) svg.appendChild(svgEl("circle", { cx: x(xv), cy: y(s.ys[i]), r: s.own ? 4.5 : 3, fill: s.color, "fill-opacity": s.own ? 1 : 0.75, stroke: cssv("--panel"), "stroke-width": s.own ? 1.5 : 1 })); });
       }
     });
+    if (opt.today != null) {     // "today" marker: left of it is measured, right of it is forecast
+      svg.appendChild(svgEl("line", { x1: x(opt.today), x2: x(opt.today), y1: pt, y2: H - pb, stroke: cssv("--ink-2"), "stroke-width": 1, "stroke-dasharray": "4 3" }));
+      const tl = svgEl("text", { x: x(opt.today) + 4, y: pt + 10, fill: cssv("--ink-2"), "font-size": "10.5", "font-family": cssv("--f-body") }); tl.textContent = "today"; svg.appendChild(tl);
+    }
     const main = opt.series.find(s => s.type === "line");
     if (main) { const i = main.xs.length - 1; svg.appendChild(svgEl("circle", { cx: x(main.xs[i]), cy: y(main.ys[i]), r: 4, fill: main.color, stroke: cssv("--panel"), "stroke-width": 2 })); }
     // hover
@@ -758,7 +910,8 @@ table.log th.n { text-align: right; }
         const band = s.band ? ` <span style="color:var(--muted)">(${s.band.lo[i].toFixed(opt.dec)}–${s.band.hi[i].toFixed(opt.dec)})</span>` : "";
         html += `<div><span style="color:${s.color}">●</span> ${s.label}: <span class="tv">${s.ys[i].toFixed(opt.dec)}</span>${band ? ` <span style="color:var(--muted)">80% range</span>` + band : ""}</div>`;
       });
-      const realHere = opt.series.filter(s => s.type === "pts").flatMap(s => s.xs.map((v, i) => [v, s.ys[i]]).filter(p => p[1] != null && Math.abs(p[0] - d) < 0.5).map(p => p[1]));
+      opt.series.filter(s => s.type === "pts" && s.own).forEach(s => { const i = s.xs.findIndex(v => Math.abs(v - d) < 0.5); if (i >= 0 && s.ys[i] != null) html += `<div><span style="color:${s.color}">●</span> Measured, this run: <span class="tv">${s.ys[i].toFixed(opt.dec)}</span></div>`; });
+      const realHere = opt.series.filter(s => s.type === "pts" && !s.own).flatMap(s => s.xs.map((v, i) => [v, s.ys[i]]).filter(p => p[1] != null && Math.abs(p[0] - d) < 0.5).map(p => p[1]));
       if (realHere.length) html += `<div><span style="color:${cssv("--real")}">●</span> Measured: <span class="tv">${realHere.map(v => v.toFixed(opt.dec)).join(", ")}</span> <span style="color:var(--muted)">(${realHere.length} real run${realHere.length > 1 ? "s" : ""})</span></div>`;
       tip.innerHTML = html; tip.hidden = false;
       const hx = x(d) * r.width / W; const tw = tip.offsetWidth;
@@ -774,9 +927,10 @@ table.log th.n { text-align: right; }
     const lo = rows.map(r => r[v + "_lo"] * sc), hi = rows.map(r => r[v + "_hi"] * sc), ys = rows.map(r => r[v] * sc);
     const series = [{ type: "band", xs, lo, hi, color: cssv("--accent") }];
     if ($("showReal").checked) (M.real[recipe] || []).forEach(rr => series.push({ type: "pts", xs: rr.day, ys: rr[v].map(q => q == null ? null : q * sc), color: cssv("--real") }));
+    if (live.on && result.k) series.push({ type: "pts", own: true, xs: live.meas.slice(0, live.k + 1).map((_, d) => d), ys: live.meas.slice(0, live.k + 1).map(m => m[v] == null ? null : m[v] * sc), color: cssv("--ink"), label: "This run" });
     if (comp) series.push({ type: "dash", xs: comp.res.rows.map(r => r.day), ys: comp.res.rows.map(r => r[v] * sc), color: cssv("--comp"), label: comp.label });
     series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "Predicted", band: { lo, hi } });
-    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v] });
+    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v], today: live.on && result.k ? live.k : null });
   }
 
   // ------------------------------------------------ shared helpers

@@ -455,6 +455,8 @@ def export_web(out_path):
     for i, rid in enumerate(ids):
         ok = ~np.isnan(b["B"][i])
         fits.append(dict(id=rid, unseen=rid.startswith("D2_HIPp"), day=[round(t / 24, 3) for t in b["B"][i][ok]],
+                         inputs=[dict(feed_pct=float(b["feed"][i, j]), glucose_target=None if np.isnan(b["glc"][i, j]) else float(b["glc"][i, j]),
+                                      galplus=bool(b["gal"][i, j] > 0), temperature=float(b["T"][i, j])) for j in range(int(ok.sum()) - 1)],
                          pred={c: [round(float(x), 3) for x in pred[i, ok, k]] for k, c in enumerate(mech.OUT)},
                          obs={c: [None if np.isnan(x) else round(float(x), 3) for x in o[i, ok, k]] for k, c in enumerate(mech.OUT)}))
     history = []

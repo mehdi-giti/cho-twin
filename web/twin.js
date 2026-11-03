@@ -68,11 +68,14 @@
   }
 
   // core: boundaries in hours (sample times or day starts); inputs act right after each boundary
-  function core(model, boundsH, steps, initial, useML) {
+  // opts.theta: run-specific multipliers on the 5 corrected rates (growth, death, glucose uptake, lactate, productivity)
+  // opts.y0: full 9-element start state (for forecasting from the middle of a run); opts.bandFrom: hour the band starts from
+  function core(model, boundsH, steps, initial, useML, opts) {
     const p = model.params, dt = 0.5;
-    initial = initial || {};
+    opts = opts || {}; initial = initial || {};
+    const theta = opts.theta || [1, 1, 1, 1, 1], t0b = opts.bandFrom || 0;
     const x0 = initial.VCD ?? 0.4, v0 = initial.viability ?? 97.5;
-    let y = [x0, x0 * (100 - v0) / v0, initial.glucose ?? 8.0, initial.lactate ?? 0.15, initial.titer ?? 0, 0, 1, 1, 0];
+    let y = opts.y0 ? opts.y0.slice() : [x0, x0 * (100 - v0) / v0, initial.glucose ?? 8.0, initial.lactate ?? 0.15, initial.titer ?? 0, 0, 1, 1, 0];
     const Bi = boundsH.map(t => Math.round(t / dt)), states = [];
     for (let s = 0; s < Bi.length; s++) {
       states.push(y.slice());
@@ -85,7 +88,7 @@
       y[7] += (feed / 100) * p.Nfeed / f;
       if (glc != null) y[2] = Math.max(y[2], glc);
       y[5] += gal;
-      const c = useML ? corrections(model, y, Bi[s] * dt, feed, glc, gal) : [1, 1, 1, 1, 1];
+      const c = (useML ? corrections(model, y, Bi[s] * dt, feed, glc, gal) : [1, 1, 1, 1, 1]).map((v, i) => v * theta[i]);
       const env = envFactors(st.pH, st.DO, p);
       for (let i = Bi[s]; i < Bi[s + 1]; i++) {
         const t = i * dt;
@@ -96,13 +99,13 @@
         y = y.map((v, j) => Math.max(v + dt / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]), 0));
       }
     }
-    return states.map((yy, s) => {
-      const day = boundsH[s] / 24, r = { day: day, time_h: boundsH[s] };
+    const rows = states.map((yy, s) => {
+      const day = boundsH[s] / 24, r = { day: day, time_h: boundsH[s] }, ahead = Math.max(boundsH[s] - t0b, 0) / 24;
       const out = [yy[0], 100 * yy[0] / Math.max(yy[0] + yy[1], 1e-9), yy[2], yy[3], yy[4]];
       OUT.forEach((v, k) => {
-        const w = model.band[v] * Math.sqrt(day); r[v] = out[k];
+        const w = model.band[v] * Math.sqrt(ahead); r[v] = out[k];
         if (v === "lactate" && model.band.lactate_abs != null) {          // lactate band in g/L (log band overstated it)
-          const a = model.band.lactate_abs * Math.min(1, Math.sqrt(day / 3));
+          const a = model.band.lactate_abs * Math.min(1, Math.sqrt(ahead / 3));
           r.lactate_lo = Math.max(out[k] - a, 0); r.lactate_hi = out[k] + a; return;
         }
         r[v + "_lo"] = Math.max(INV[k](TR[k](out[k]) - w), 0);
@@ -110,6 +113,8 @@
       });
       return r;
     });
+    rows.states = states;
+    return rows;
   }
 
   function supportOf(st) {
@@ -156,6 +161,97 @@
     return res;
   }
 
-  root.Twin = { protocol: protocol, simulate: simulate, simulateBatch: simulateBatch, errors: errors, RECIPES: RECIPES, OUT: OUT };
+  // ================= running batch: self-adjustment to the data so far, forecast from today, input suggestions
+  // past: [{day, VCD, viability, glucose, lactate, titer}] measured at day boundaries 0..k (null = not measured)
+  // steps: inputs for every day 0..n-1 (past days = what was done; future days = the plan)
+  const LSIG = [0.10, 0.30, 0.15, 0.20, 0.10];
+  // Back-test on the 6 benchmark runs (data to day 4-7): fitting all 5 factors overfits 3-4 samples and worsens forecasts;
+  // re-anchoring to today plus ONE growth factor (prior sd 0.1) gave the lowest titer error. So only growth is calibrated.
+  const CAL = { priorSd: [0.1, 0.25, 0.25, 0.25, 0.1], free: [true, false, false, false, false] };
+  function lres(model, past, steps, logth) {
+    const k = past.length - 1, bounds = past.map((_, i) => i * 24);
+    const init = { VCD: past[0].VCD ?? 0.4, viability: past[0].viability ?? 97.5, glucose: past[0].glucose ?? 8, lactate: past[0].lactate ?? 0.15, titer: past[0].titer ?? 0 };
+    const rows = core(model, bounds, steps.slice(0, k), init, true, { theta: logth.map(Math.exp) });
+    const r = [];
+    for (let i = 1; i <= k; i++) OUT.forEach((v, j) => { const m = past[i][v]; if (m != null && !isNaN(m) && !(v === "titer" && m < 20)) r.push((TR[j](rows[i][v]) - TR[j](m)) / LSIG[j]); });
+    logth.forEach((x, j) => { if (CAL.free[j]) r.push(x / CAL.priorSd[j]); });   // pulls each factor toward 1 when the data say little
+    return { r, rows };
+  }
+  function calibrate(model, past, steps) {
+    let th = [0, 0, 0, 0, 0];
+    if (past.length < 3) return { theta: th.map(Math.exp), rows: lres(model, past, steps, th).rows };
+    let cur = lres(model, past, steps, th), lam = 1e-2;
+    const cost = r => r.reduce((a, b) => a + b * b, 0);
+    for (let it = 0; it < 12; it++) {
+      const J = th.map((_, j) => { if (!CAL.free[j]) return cur.r.map(() => 0); const t2 = th.slice(); t2[j] += 1e-3; const r2 = lres(model, past, steps, t2).r; return r2.map((v, i) => (v - cur.r[i]) / 1e-3); });
+      const A = th.map((_, a) => th.map((_, b) => J[a].reduce((s, v, i) => s + v * J[b][i], 0) + (a === b ? lam + (CAL.free[a] ? 0 : 1e6) : 0)));
+      const g = th.map((_, a) => -J[a].reduce((s, v, i) => s + v * cur.r[i], 0));
+      const d = solve(A, g), cand = th.map((v, j) => Math.max(Math.min(v + d[j], 0.7), -0.7));
+      const nx = lres(model, past, steps, cand);
+      if (cost(nx.r) < cost(cur.r)) { th = cand; cur = nx; lam = Math.max(lam / 3, 1e-4); if (d.every(x => Math.abs(x) < 1e-3)) break; } else lam *= 5;
+    }
+    return { theta: th.map(Math.exp), rows: cur.rows };
+  }
+  function solve(A, b) {
+    const n = b.length, M = A.map((row, i) => row.concat([b[i]]));
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      [M[c], M[p]] = [M[p], M[c]];
+      for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+    }
+    return M.map((row, i) => row[n] / row[i]);
+  }
+  // forecast: calibrate on days 0..k, take the state at day k, replace what was measured that day, run the plan to the end
+  function liveForecast(model, past, steps, opts) {
+    opts = opts || {};
+    const k = past.length - 1, n = steps.length;
+    const cal = opts.theta ? { theta: opts.theta, rows: null } : calibrate(model, past, steps);
+    const init = { VCD: past[0].VCD ?? 0.4, viability: past[0].viability ?? 97.5, glucose: past[0].glucose ?? 8, lactate: past[0].lactate ?? 0.15, titer: past[0].titer ?? 0 };
+    const hist = cal.rows || core(model, past.map((_, i) => i * 24), steps.slice(0, k), init, true, { theta: cal.theta });
+    const y = hist.states[k].slice(), m = past[k];
+    if (m.VCD != null && !isNaN(m.VCD)) { const dead = y[0] > 0 ? y[1] / y[0] : 0; y[0] = m.VCD; y[1] = m.viability != null ? m.VCD * (100 - m.viability) / Math.max(m.viability, 0.5) : m.VCD * dead; }
+    else if (m.viability != null) y[1] = y[0] * (100 - m.viability) / Math.max(m.viability, 0.5);
+    if (m.glucose != null && !isNaN(m.glucose)) y[2] = m.glucose;
+    if (m.lactate != null && !isNaN(m.lactate)) y[3] = m.lactate;
+    if (m.titer != null && !isNaN(m.titer) && m.titer >= 20) y[4] = m.titer;
+    const fut = core(model, Array.from({ length: n - k + 1 }, (_, i) => (k + i) * 24), steps.slice(k), {}, true, { theta: cal.theta, y0: y, bandFrom: k * 24 });
+    const rows = hist.slice(0, k).map(r => { const q = Object.assign({}, r); OUT.forEach(v => { q[v + "_lo"] = q[v]; q[v + "_hi"] = q[v]; }); q.fit = true; return q; }).concat(fut);
+    const support = steps.map((st, d) => d < k ? "done" : supportOf(st));
+    let ivcd = 0; for (let i = 1; i < rows.length; i++) ivcd += (rows[i].day - rows[i - 1].day) * (rows[i].VCD + rows[i - 1].VCD) / 2;
+    const last = rows[rows.length - 1], fs = support.slice(k);
+    // fit quality on the measured days (titer % and VCD %)
+    const fe = v => { const q = past.slice(1).map((pp, i) => [hist[i + 1][v], pp[v]]).filter(x => x[1] != null && x[1] > (v === "titer" ? 50 : 1)); return q.length ? 100 * q.reduce((a, x) => a + Math.abs(x[0] - x[1]) / x[1], 0) / q.length : null; };
+    const kpi = { titer: last.titer, titer_lo: last.titer_lo, titer_hi: last.titer_hi, peakVCD: Math.max(...rows.map(r => r.VCD)), ivcd,
+      viability: last.viability, viability_lo: last.viability_lo, viability_hi: last.viability_hi, peakLactate: Math.max(...rows.map(r => r.lactate)),
+      nData: fs.filter(s => s === "data").length, nPrior: fs.filter(s => s === "prior").length, nExtrapol: fs.filter(s => s === "extrapol").length, nDone: k };
+    return { rows, support, kpi, theta: cal.theta, k, fitErr: { titer: fe("titer"), VCD: fe("VCD") } };
+  }
+  // suggest future inputs: search feeding regime, glucose target, Gal+ and (optionally) a temperature shift; maximise final titer
+  function suggest(model, past, steps, opts) {
+    opts = opts || {};
+    const k = past.length - 1, n = steps.length, minVia = opts.minViability ?? 80, allowT = !!opts.allowTemperature;
+    const cal = calibrate(model, past, steps);
+    const cands = [];
+    const regimes = [{ id: "48h", every: 2, vol: 5.0 }, { id: "24h", every: 1, vol: 2.5 }];
+    const shifts = [null]; if (allowT) for (const T of [33, 34, 35]) for (let d = Math.max(k, 3); d <= n - 3; d++) shifts.push({ T, d });
+    for (const rg of regimes) for (const g of [2, 3, 4, 5, 6, 7, 8]) for (const gal of [false, true]) for (const sh of shifts) {
+      const st = steps.map((s, d) => {
+        if (d < k) return s;
+        const fed = d >= 3 && (rg.every === 1 || d % 2 === 1);
+        return { feed_pct: fed ? rg.vol : 0, glucose_target: fed ? g : null, galplus: gal && fed && (rg.every === 2 || d % 2 === 1), temperature: sh && d >= sh.d ? sh.T : 37, pH: s.pH, DO: s.DO };
+      });
+      const f = liveForecast(model, past, st, { theta: cal.theta });
+      if (f.kpi.viability < minVia) continue;
+      cands.push({ steps: st, titer: f.kpi.titer, viability: f.kpi.viability, lo: f.kpi.titer_lo, hi: f.kpi.titer_hi, regime: rg.id, glucose: g, gal, shift: sh,
+        basis: f.kpi.nExtrapol ? "extrapol" : f.kpi.nPrior ? "prior" : "data" });
+    }
+    cands.sort((a, b) => b.titer - a.titer);
+    const out = [], seen = new Set();               // keep options that differ in kind, not only by a small tweak
+    for (const c of cands) { const key = c.regime + (c.shift ? "T" : "") + (c.gal ? "G" : ""); if (seen.has(key)) continue; seen.add(key); out.push(c); if (out.length === 3) break; }
+    const now = liveForecast(model, past, steps, { theta: cal.theta });
+    return { options: out, current: now.kpi, tried: cands.length, theta: cal.theta };
+  }
+
+  root.Twin = { protocol: protocol, simulate: simulate, simulateBatch: simulateBatch, errors: errors, liveForecast: liveForecast, suggest: suggest, calibrate: calibrate, RECIPES: RECIPES, OUT: OUT, CAL: CAL };
   if (typeof module !== "undefined") module.exports = root.Twin;
 })(typeof window !== "undefined" ? window : globalThis);

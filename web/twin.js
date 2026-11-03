@@ -19,19 +19,31 @@
     return steps;
   }
 
-  function rhs(t, y, T, p, c) {
+  function envFactors(pH, DO, p) {
+    let fmu = 1, flac = 1;
+    if (pH != null && pH !== "" && !isNaN(+pH)) { fmu *= Math.exp(-Math.pow((+pH - p.pH_ref) / p.pH_sd, 2)); flac *= Math.exp(p.pH_lac * (+pH - p.pH_ref)); }
+    if (DO != null && DO !== "" && !isNaN(+DO)) {
+      const d = Math.min(Math.max(+DO, 0.5), 100), h = x => Math.pow(x, p.DO_n) / (Math.pow(p.K_DO, p.DO_n) + Math.pow(x, p.DO_n));
+      fmu *= Math.min(h(d) / h(p.DO_ref), 1);
+      flac *= Math.max((1 + p.DO_lac * (1 - h(d))) / (1 + p.DO_lac * (1 - h(p.DO_ref))), 1);
+    }
+    return [fmu, flac];
+  }
+
+  function rhs(t, y, T, p, c, env) {
     const Xv = Math.max(y[0], 0), Xd = Math.max(y[1], 0), G = Math.max(y[2], 0), L = Math.max(y[3], 0), Ga = Math.max(y[5], 0),
       N = Math.max(y[7], 0), Dm = Math.max(y[8], 0);
     const fT = Math.exp(-p.kT_mu * (37 - T)), Q = Math.pow(p.Q10, (T - 37) / 10);
-    const mu_n = p.mu_max * fT * G / (p.Kg + G) * N / (p.Kn + N) * Math.max(1 - Xv / p.Xmax, 0);
+    const fmu = env ? env[0] : 1, flac = env ? env[1] : 1;
+    const mu_n = p.mu_max * fT * fmu * G / (p.Kg + G) * N / (p.Kn + N) * Math.max(1 - Xv / p.Xmax, 0);
     const energy = G + p.wl * L + Ga + p.eN * N;
     const starv = p.Ks * p.Ks / (p.Ks * p.Ks + energy * energy);
     const a6 = Math.pow(t / p.t50, 6), h4 = Math.pow(Dm, 4) / (Math.pow(p.Kdm, 4) + Math.pow(Dm, 4));
     let kd = Q * (p.kd0 + p.kd_starv * h4 + p.kd_age * a6 / (1 + a6));
     const mu = mu_n * c[0]; kd *= c[1];
     const qG = Q * (mu / p.Yxg + p.mg) * G / (p.Kgu + G) * (1 + p.kgo * G) * c[2];
-    const sw = Math.max(p.Ksw / (p.Ksw + G), 1 - mu_n / (p.mu_max * fT));
-    const qLp = p.Ylg * qG * (1 - sw) * c[3];
+    const sw = Math.max(p.Ksw / (p.Ksw + G), 1 - mu_n / (p.mu_max * fT * fmu));
+    const qLp = p.Ylg * qG * (1 - sw) * c[3] * flac;
     const qLc = p.qLc * L / (0.05 + L) * sw * (1 + p.cT_lac * (37 - T)) / c[3];
     const qGa = p.qGal * Ga / (0.05 + Ga) * p.Ksw / (p.Ksw + G);
     const qP = Math.max(p.qP0 + p.aP * mu_n / p.mu_max, 0) * (1 + p.kT_qP * (37 - T)) * (1 + p.kGP * G / (2 + G)) * c[4];
@@ -74,12 +86,13 @@
       if (glc != null) y[2] = Math.max(y[2], glc);
       y[5] += gal;
       const c = useML ? corrections(model, y, Bi[s] * dt, feed, glc, gal) : [1, 1, 1, 1, 1];
+      const env = envFactors(st.pH, st.DO, p);
       for (let i = Bi[s]; i < Bi[s + 1]; i++) {
         const t = i * dt;
-        const k1 = rhs(t, y, T, p, c), y2 = y.map((v, j) => v + dt / 2 * k1[j]);
-        const k2 = rhs(t + dt / 2, y2, T, p, c), y3 = y.map((v, j) => v + dt / 2 * k2[j]);
-        const k3 = rhs(t + dt / 2, y3, T, p, c), y4 = y.map((v, j) => v + dt * k3[j]);
-        const k4 = rhs(t + dt, y4, T, p, c);
+        const k1 = rhs(t, y, T, p, c, env), y2 = y.map((v, j) => v + dt / 2 * k1[j]);
+        const k2 = rhs(t + dt / 2, y2, T, p, c, env), y3 = y.map((v, j) => v + dt / 2 * k2[j]);
+        const k3 = rhs(t + dt / 2, y3, T, p, c, env), y4 = y.map((v, j) => v + dt * k3[j]);
+        const k4 = rhs(t + dt, y4, T, p, c, env);
         y = y.map((v, j) => Math.max(v + dt / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]), 0));
       }
     }
@@ -88,6 +101,10 @@
       const out = [yy[0], 100 * yy[0] / Math.max(yy[0] + yy[1], 1e-9), yy[2], yy[3], yy[4]];
       OUT.forEach((v, k) => {
         const w = model.band[v] * Math.sqrt(day); r[v] = out[k];
+        if (v === "lactate" && model.band.lactate_abs != null) {          // lactate band in g/L (log band overstated it)
+          const a = model.band.lactate_abs * Math.min(1, Math.sqrt(day / 3));
+          r.lactate_lo = Math.max(out[k] - a, 0); r.lactate_hi = out[k] + a; return;
+        }
         r[v + "_lo"] = Math.max(INV[k](TR[k](out[k]) - w), 0);
         r[v + "_hi"] = v === "viability" ? Math.min(INV[k](TR[k](out[k]) + w), 100) : INV[k](TR[k](out[k]) + w);
       });
@@ -99,6 +116,7 @@
     const f = +st.feed_pct || 0, g = st.glucose_target, T = (st.temperature == null || st.temperature === "") ? 37 : +st.temperature;
     if (f > 5 || (g != null && g !== "" && +g !== 0 && (+g < 2 || +g > 8))) return "extrapol";
     if (Math.abs(T - 37) > 0.25) return "prior";
+    if ((st.pH != null && st.pH !== "" && Math.abs(+st.pH - 7.0) > 0.05) || (st.DO != null && st.DO !== "" && +st.DO < 25)) return "prior";
     return "data";
   }
 
@@ -120,7 +138,7 @@
   function simulateBatch(model, samples) {
     const t = samples.map(r => r.time_h), first = samples[0];
     const init = { VCD: first.VCD, viability: first.viability ?? 97, glucose: first.glucose ?? 8, lactate: first.lactate ?? 0.15, titer: first.titer ?? 0 };
-    const steps = samples.slice(0, -1).map(r => ({ feed_pct: r.feed_pct, glucose_target: r.glucose_target, galplus: !!r.galplus, temperature: r.temperature }));
+    const steps = samples.slice(0, -1).map(r => ({ feed_pct: r.feed_pct, glucose_target: r.glucose_target, galplus: !!r.galplus, temperature: r.temperature, pH: r.pH, DO: r.DO }));
     return { rows: core(model, t, steps, init, true), support: steps.map(supportOf) };
   }
 

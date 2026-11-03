@@ -48,7 +48,13 @@ LINEAR = {"aP": (0.0, -0.8, 0.8)}     # pg/cell/h growth-associated productivity
 PRIOR = dict(kT_mu=0.14,   # growth x exp(-0.14 (37-T)): growth at 33 C ~57% (lit. 47-67%; Trummer 2006, Hwang 2011)
              kT_qP=0.08,   # qP x (1 + 0.08 (37-T)): +36% at 32.5 C (D3 pair +46% at -4.5 C)
              cT_lac=0.15,  # lactate consumption x (1 + 0.15 (37-T)) (D3 pair: switch to consumption)
-             Q10=2.0)      # death and uptake
+             Q10=2.0,      # death and uptake
+             # pH and dissolved oxygen (DO) priors. Every real run had pH 7.02-7.03 and DO 30% (D1) or no
+             # control (D2), so these effects come from literature ranges and one D1 DO-failure pair.
+             pH_ref=7.0, pH_sd=0.5,    # growth x exp(-((pH-7.0)/0.5)^2): 0.85 at pH 6.8 or 7.2, 0.53 at 6.6 or 7.4
+             pH_lac=1.0,               # lactate production x exp(1.0 (pH-7.0)): +22% at 7.2, -18% at 6.8
+             K_DO=4.0, DO_n=2.0, DO_ref=30.0,  # growth x Hill in DO (n=2), = 1 at 30%: 0.95 at 15%, 0.88 at 10%, 0.62 at 5%
+             DO_lac=1.5)               # lactate production x up to 1.4 at 5% DO (oxygen limitation -> overflow)
 
 NAMES = list(PARAMS) + list(LINEAR)
 
@@ -58,11 +64,26 @@ def default_params():
     return p
 
 
-def rhs(t, y, T, p, c):
+def env_factors(pH, DO, p):
+    """Multipliers for growth and lactate production. NaN pH/DO = as in the reference data (factor 1)."""
+    pH = np.asarray(pH, float); DO = np.asarray(DO, float)
+    f_mu = np.where(np.isnan(pH), 1.0, np.exp(-((np.nan_to_num(pH, nan=7.0) - p["pH_ref"]) / p["pH_sd"]) ** 2))
+    f_lac = np.where(np.isnan(pH), 1.0, np.exp(p["pH_lac"] * (np.nan_to_num(pH, nan=7.0) - p["pH_ref"])))
+    d = np.clip(np.nan_to_num(DO, nan=p["DO_ref"]), 0.5, 100)
+    h = lambda x: x ** p["DO_n"] / (p["K_DO"] ** p["DO_n"] + x ** p["DO_n"])
+    g = h(d) / h(p["DO_ref"])
+    l = (1 + p["DO_lac"] * (1 - h(d))) / (1 + p["DO_lac"] * (1 - h(p["DO_ref"])))
+    f_mu = f_mu * np.where(np.isnan(DO), 1.0, np.minimum(g, 1.0))
+    f_lac = f_lac * np.where(np.isnan(DO), 1.0, np.maximum(l, 1.0))
+    return f_mu, f_lac
+
+
+def rhs(t, y, T, p, c, env=None):
     """Vectorised over runs. c = (R,5) multiplicative corrections on mu, kd, qGlc, lactate balance, qP."""
     Xv, Xd, G, L, P, Ga, V, N, Dm = [np.maximum(y[:, i], 0) for i in range(9)]
     fT = np.exp(-p["kT_mu"] * (37 - T)); Q = p["Q10"] ** ((T - 37) / 10)
-    mu_n = p["mu_max"] * fT * G / (p["Kg"] + G) * N / (p["Kn"] + N) * np.clip(1 - Xv / p["Xmax"], 0, None)
+    f_mu, f_lac = env if env is not None else (1.0, 1.0)
+    mu_n = p["mu_max"] * fT * f_mu * G / (p["Kg"] + G) * N / (p["Kn"] + N) * np.clip(1 - Xv / p["Xmax"], 0, None)
     energy = G + p["wl"] * L + Ga + p["eN"] * N
     starv = p["Ks"] ** 2 / (p["Ks"] ** 2 + energy ** 2)
     a6 = (t / p["t50"]) ** 6
@@ -70,8 +91,8 @@ def rhs(t, y, T, p, c):
     kd = Q * (p["kd0"] + p["kd_starv"] * h4 + p["kd_age"] * a6 / (1 + a6))
     mu = mu_n * c[:, 0]; kd = kd * c[:, 1]
     qG = Q * (mu / p["Yxg"] + p["mg"]) * G / (p["Kgu"] + G) * (1 + p["kgo"] * G) * c[:, 2]
-    sw = np.maximum(p["Ksw"] / (p["Ksw"] + G), 1 - mu_n / (p["mu_max"] * fT))
-    qLp = p["Ylg"] * qG * (1 - sw) * c[:, 3]
+    sw = np.maximum(p["Ksw"] / (p["Ksw"] + G), 1 - mu_n / (p["mu_max"] * fT * f_mu))
+    qLp = p["Ylg"] * qG * (1 - sw) * c[:, 3] * f_lac
     qLc = p["qLc"] * L / (0.05 + L) * sw * (1 + p["cT_lac"] * (37 - T)) / c[:, 3]
     qGa = p["qGal"] * Ga / (0.05 + Ga) * p["Ksw"] / (p["Ksw"] + G)
     qP = (np.maximum(p["qP0"] + p["aP"] * mu_n / p["mu_max"], 0) * (1 + p["kT_qP"] * (37 - T))
@@ -128,8 +149,9 @@ def simulate(p, batch, dt=0.5, corr=None, corr_fn=None):
         if not act.any():
             break
         T = batch["T"][ar, cur]; t = i * dt
-        k1 = rhs(t, y, T, p, c); k2 = rhs(t + dt / 2, y + dt / 2 * k1, T, p, c)
-        k3 = rhs(t + dt / 2, y + dt / 2 * k2, T, p, c); k4 = rhs(t + dt, y + dt * k3, T, p, c)
+        env = env_factors(batch["pH"][ar, cur], batch["DO"][ar, cur], p) if "pH" in batch else None
+        k1 = rhs(t, y, T, p, c, env); k2 = rhs(t + dt / 2, y + dt / 2 * k1, T, p, c, env)
+        k3 = rhs(t + dt / 2, y + dt / 2 * k2, T, p, c, env); k4 = rhs(t + dt, y + dt * k3, T, p, c, env)
         y = np.where(act[:, None], np.maximum(y + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4), 0), y)
     return out
 

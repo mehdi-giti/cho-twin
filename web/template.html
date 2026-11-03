@@ -155,6 +155,7 @@ footer { margin-top: 18px; font-size: 0.76rem; color: var(--muted); }
 .sl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .sl input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--accent); }
 .sl input[type=range]:focus-visible { outline: none; }
+.sl input[type=range]:disabled { opacity: 0.35; cursor: default; }
 .sl input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
 .switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 0.86rem; font-weight: 500; }
 .switch input { width: 36px; height: 20px; accent-color: var(--accent); }
@@ -210,6 +211,22 @@ table.log th.n { text-align: right; }
 .checks .val { font-family: var(--f-mono); font-size: 0.78rem; color: var(--ink-2); text-align: right; }
 .mark { font-weight: 700; }
 .mark.ok { color: var(--good); } .mark.no { color: var(--extra); }
+
+.axes { font-size: 0.8rem; color: var(--ink-2); }
+.axes summary { cursor: pointer; }
+.axes-grid { display: grid; grid-template-columns: auto auto auto; gap: 6px 10px; align-items: center; margin-top: 8px; }
+.axes-grid input { width: 5.2em; padding: 3px 6px; }
+.ctitle .err { font-size: 0.72rem; color: var(--muted); font-family: var(--f-body); }
+.ctitle .off { font-size: 0.72rem; color: var(--prior); font-family: var(--f-body); }
+.kpi .meas { font-size: 0.78rem; color: var(--ink); }
+.kpi .meas b { font-family: var(--f-mono); font-weight: 500; }
+.env-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.env-row .switch { font-weight: 500; }
+.dvm { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.dvm th { font-family: var(--f-display); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.dvm th:first-child, .dvm td:first-child { text-align: left; }
+.dvm td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; font-family: var(--f-mono); }
+.dvm td:first-child { font-family: var(--f-body); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -269,13 +286,24 @@ table.log th.n { text-align: right; }
           <div class="meta"><span>real runs: 37 °C only · other values use literature</span><span class="was" id="wT"></span></div>
         </div>
         <label class="switch" for="swGal"><span>Galactose + Mn²⁺ (Gal+) with this feed</span><input type="checkbox" id="swGal"></label>
+        <div class="sl">
+          <label class="env-row" for="cbPH"><span>pH control</span><span class="row" style="gap:6px"><span class="val" id="vPH"></span><input type="checkbox" id="cbPH" aria-label="Control pH"></span></label>
+          <input type="range" id="slPH" min="6.6" max="7.4" step="0.05" value="7.0" aria-label="pH set-point">
+          <div class="meta"><span>off = as in the reference runs (not controlled) · effect is a literature prior</span><span class="was" id="wPH"></span></div>
+        </div>
+        <div class="sl">
+          <label class="env-row" for="cbDO"><span>Dissolved oxygen control</span><span class="row" style="gap:6px"><span class="val" id="vDO"></span><input type="checkbox" id="cbDO" aria-label="Control dissolved oxygen"></span></label>
+          <input type="range" id="slDO" min="5" max="100" step="5" value="30" aria-label="DO set-point">
+          <div class="meta"><span>% air saturation · literature prior + one real low-DO run</span><span class="was" id="wDO"></span></div>
+        </div>
+        <p class="note" style="margin:0">Agitation is not an input yet: no runs separate its effect from DO. Batch files can record it (<code>agitation</code> column) so a later model can learn it.</p>
         <p class="note" id="scopeNote" style="margin:0"></p>
       </div>
 
       <div>
         <div class="tablewrap">
           <table class="days" aria-label="Inputs per day (click a row to edit)">
-            <thead><tr><th>Day</th><th>Feed<br>% v/v</th><th>Glucose<br>to g/L</th><th>Gal+</th><th>Temp<br>°C</th><th>Basis</th></tr></thead>
+            <thead><tr><th>Day</th><th>Feed<br>% v/v</th><th>Glc<br>g/L</th><th>Gal+</th><th>Temp<br>°C</th><th>pH</th><th>DO<br>%</th><th title="Basis">B</th></tr></thead>
             <tbody id="dayRows"></tbody>
           </table>
         </div>
@@ -283,7 +311,7 @@ table.log th.n { text-align: right; }
       </div>
       <div class="legend-basis" aria-label="Basis legend">
         <span><i class="dot data"></i>Within real data</span>
-        <span><i class="dot prior"></i>Literature prior (temperature)</span>
+        <span><i class="dot prior"></i>Literature prior (temperature, pH, DO)</span>
         <span><i class="dot extrapol"></i>Outside tested range</span>
       </div>
       <div class="seeds" aria-label="Start of culture">
@@ -305,8 +333,12 @@ table.log th.n { text-align: right; }
       <div class="panel charts">
         <div class="chart-head">
           <div class="series-legend" id="seriesLegend"></div>
-          <label class="toggle"><input type="checkbox" id="showReal" checked> Real runs of this recipe</label>
+          <label class="toggle"><input type="checkbox" id="showReal" checked> Measured real runs</label>
         </div>
+        <details class="axes" id="axesBox"><summary>Axis limits (fixed, so the scale stays put while you change inputs)</summary>
+          <div class="axes-grid" id="axesGrid"></div>
+          <div class="row" style="margin-top:8px"><button class="btn small" id="axesReset">Reset to defaults</button><span class="note">Values above a limit show as ▲ off scale.</span></div>
+        </details>
         <div class="chart" id="ch-titer"></div>
         <div class="small-grid">
           <div class="chart" id="ch-VCD"></div>
@@ -349,6 +381,7 @@ table.log th.n { text-align: right; }
             <tr><td>glucose_target</td><td>glucose topped up to, g/L (blank = none)</td></tr>
             <tr><td>galplus</td><td>1 if galactose + Mn²⁺ added with this feed</td></tr>
             <tr><td>temperature</td><td>°C from this sample to the next</td></tr>
+            <tr><td>pH, DO, agitation</td><td>optional set-points from this sample to the next (pH units, % air saturation, rpm); blank = not controlled or not recorded</td></tr>
           </table>
           <p class="note" style="margin:6px 0 0">Blank cells mean not measured. Optional first lines: <code># batch_id:</code>, <code># recipe:</code>, <code># note:</code></p>
           <pre class="tpl" id="tplText"></pre>
@@ -408,6 +441,13 @@ table.log th.n { text-align: right; }
       </section>
     </div>
 
+    <section class="panel stack" style="margin-top:16px" aria-label="Measured data versus model error">
+      <div><h2>Measured data or prediction?</h2>
+        <p class="acc-intro" style="margin-bottom:0">Every line and KPI on the Plan view is a model prediction, even for a recipe that was run for real. Measured values appear only as grey points and as “Measured” under a KPI. The table compares how much real replicates of the same recipe differ from each other (the limit set by the lab data) with how far the model is off (the error the model adds).</p></div>
+      <div class="tablewrap"><table class="dvm" id="dvmTable"></table></div>
+      <p class="note" id="dvmNote" style="margin:0"></p>
+    </section>
+
     <section class="acc" aria-label="Model accuracy">
       <div class="panel">
         <h2>How accurate is it?</h2>
@@ -448,12 +488,21 @@ table.log th.n { text-align: right; }
     "HIP+": "As HIP, plus galactose. Never used for training: the model's unseen test recipe."
   };
   const VARS = {
-    titer: { name: "Titer", unit: "g/L", scale: 0.001, dec: 2 },
-    VCD: { name: "Viable cell density", unit: "10⁶ cells/mL", scale: 1, dec: 1 },
-    viability: { name: "Viability", unit: "%", scale: 1, dec: 1, max: 100 },
-    glucose: { name: "Glucose", unit: "g/L", scale: 1, dec: 2 },
-    lactate: { name: "Lactate", unit: "g/L", scale: 1, dec: 2 }
+    titer: { name: "Titer", unit: "g/L", scale: 0.001, dec: 2, ymin: 0, ymax: 3 },
+    VCD: { name: "Viable cell density", unit: "10⁶ cells/mL", scale: 1, dec: 1, ymin: 0, ymax: 30 },
+    viability: { name: "Viability", unit: "%", scale: 1, dec: 1, ymin: 0, ymax: 100 },
+    glucose: { name: "Glucose", unit: "g/L", scale: 1, dec: 2, ymin: 0, ymax: 10 },
+    lactate: { name: "Lactate", unit: "g/L", scale: 1, dec: 2, ymin: 0, ymax: 3 }
   };
+  const AXIS_DEFAULT = JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(VARS).map(([k, v]) => [k, [v.ymin, v.ymax]]))));
+  try { const s = JSON.parse(localStorage.getItem("twin-axes") || "null"); if (s) Object.entries(s).forEach(([k, [a, b]]) => { if (VARS[k] && b > a) { VARS[k].ymin = a; VARS[k].ymax = b; } }); } catch (e) {}
+  // typical model error per output (fixed benchmark, known recipes) shown beside each chart title
+  const ERRTXT = (() => { const b = (M.bench || {}).known || {}; return {
+    titer: b["titer_MAPE_%"] != null ? `model error ±${b["titer_MAPE_%"].toFixed(0)}%` : "",
+    VCD: b["VCD_MAPE_%"] != null ? `model error ±${b["VCD_MAPE_%"].toFixed(0)}%` : "",
+    viability: b.viability_MAE != null ? `model error ±${b.viability_MAE.toFixed(1)} pts` : "",
+    glucose: b.glucose_MAE != null ? `model error ±${b.glucose_MAE.toFixed(2)} g/L` : "",
+    lactate: b.lactate_MAE != null ? `model error ±${b.lactate_MAE.toFixed(2)} g/L` : "" }; })();
   const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const $ = id => document.getElementById(id);
 
@@ -464,7 +513,7 @@ table.log th.n { text-align: right; }
   $("recipe").value = recipe;
   let sel = 5, scope = "on";
   const TESTED = { slFeed: [[0, 5, "good"]], slGlc: [[0, 0, "good"], [2, 8, "good"]], slT: [[30, 36.75, "prior"], [36.75, 37.25, "good"], [37.25, 38, "prior"]],
-    slSeedX: [[0.18, 0.43, "good"]], slSeedV: [[94, 99.5, "good"]] };
+    slSeedX: [[0.18, 0.43, "good"]], slSeedV: [[94, 99.5, "good"]], slPH: [[6.6, 7.4, "prior"]], slDO: [[5, 100, "prior"]] };
   function paintTrack(id) {
     const el = $(id), lo = +el.min, hi = +el.max, segs = TESTED[id] || [];
     const pct = v => (Math.min(Math.max(v, lo), hi) - lo) / (hi - lo) * 100;
@@ -480,7 +529,7 @@ table.log th.n { text-align: right; }
     const tb = $("dayRows"); tb.innerHTML = "";
     steps.forEach((s, d) => {
       const tr = document.createElement("tr"); tr.id = "r" + d; tr.tabIndex = 0;
-      tr.innerHTML = `<td class="day">${d}</td><td class="v" id="cf${d}"></td><td class="v" id="cg${d}"></td><td class="v" id="ca${d}" style="text-align:center"></td><td class="v" id="ct${d}"></td><td><span class="basis" id="b${d}"></span></td>`;
+      tr.innerHTML = `<td class="day">${d}</td><td class="v" id="cf${d}"></td><td class="v" id="cg${d}"></td><td class="v" id="ca${d}" style="text-align:center"></td><td class="v" id="ct${d}"></td><td class="v" id="cp${d}"></td><td class="v" id="co${d}"></td><td><span class="basis" id="b${d}"></span></td>`;
       tr.addEventListener("click", () => selectDay(d));
       tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectDay(d); } });
       tb.appendChild(tr);
@@ -494,6 +543,8 @@ table.log th.n { text-align: right; }
       set("cg" + d, s.glucose_target == null ? "–" : (+s.glucose_target).toFixed(1), !eq(s.glucose_target, b.glucose_target), s.glucose_target == null);
       set("ca" + d, s.galplus ? "✓" : "–", !!s.galplus !== !!b.galplus, !s.galplus);
       set("ct" + d, (+s.temperature).toFixed(1), !eq(s.temperature, b.temperature), false);
+      set("cp" + d, s.pH == null ? "–" : (+s.pH).toFixed(2), !eq(s.pH, b.pH), s.pH == null);
+      set("co" + d, s.DO == null ? "–" : (+s.DO).toFixed(0), !eq(s.DO, b.DO), s.DO == null);
       $("r" + d).classList.toggle("sel", d === sel);
     });
   }
@@ -505,9 +556,12 @@ table.log th.n { text-align: right; }
     $("wFeed").textContent = eq(s.feed_pct, b.feed_pct) ? "" : "recipe: " + (b.feed_pct ? b.feed_pct + "%" : "no feed");
     $("wGlc").textContent = eq(s.glucose_target, b.glucose_target) ? "" : "recipe: " + (b.glucose_target == null ? "no top-up" : b.glucose_target + " g/L");
     $("wT").textContent = eq(s.temperature, b.temperature) ? "" : "recipe: " + b.temperature + " °C";
+    $("cbPH").checked = s.pH != null; $("slPH").disabled = s.pH == null; if (s.pH != null) $("slPH").value = s.pH;
+    $("cbDO").checked = s.DO != null; $("slDO").disabled = s.DO == null; if (s.DO != null) $("slDO").value = s.DO;
+    $("wPH").textContent = eq(s.pH, b.pH) ? "" : "recipe: not controlled"; $("wDO").textContent = eq(s.DO, b.DO) ? "" : "recipe: not controlled";
     $("scopeOne").textContent = `Day ${sel} only`; $("scopeOn").textContent = `Day ${sel} onward`;
     $("scopeNote").textContent = scope === "on"
-      ? `Changes apply from day ${sel} to day ${DAYS - 1}. Feed, glucose and Gal+ change only on days that already feed; temperature changes on every day.`
+      ? `Changes apply from day ${sel} to day ${DAYS - 1}. Feed, glucose and Gal+ change only on days that already feed; temperature, pH and DO change on every day.`
       : `Changes apply to day ${sel} only.`;
   }
   function showVals() {
@@ -515,6 +569,8 @@ table.log th.n { text-align: right; }
     $("vFeed").textContent = f ? f.toFixed(1) + " % v/v" : "no feed";
     $("vGlc").textContent = g ? g.toFixed(1) + " g/L" : "no top-up";
     $("vT").textContent = tt.toFixed(1) + " °C";
+    $("vPH").textContent = $("cbPH").checked ? (+$("slPH").value).toFixed(2) : "off";
+    $("vDO").textContent = $("cbDO").checked ? (+$("slDO").value).toFixed(0) + " %" : "off";
     $("vSeedX").textContent = (+$("slSeedX").value).toFixed(2); $("vSeedV").textContent = (+$("slSeedV").value).toFixed(1) + " %";
   }
   function selectDay(d) { sel = Math.min(Math.max(d, 0), DAYS - 1); fillRows(); syncEditor(); }
@@ -527,6 +583,8 @@ table.log th.n { text-align: right; }
       if (field === "feed" && (isSel || s.feed_pct > 0)) { s.feed_pct = f; if (!f) { s.glucose_target = null; s.galplus = false; } }
       if (field === "glc" && (isSel || s.feed_pct > 0)) s.glucose_target = g ? g : null;
       if (field === "gal" && (isSel || s.feed_pct > 0)) s.galplus = ga;
+      if (field === "pH") s.pH = $("cbPH").checked ? +$("slPH").value : null;
+      if (field === "DO") s.DO = $("cbDO").checked ? +$("slDO").value : null;
     });
     showVals(); fillRows(); syncEditor(); run();
   }
@@ -534,6 +592,8 @@ table.log th.n { text-align: right; }
   $("slGlc").addEventListener("input", () => applyEdit("glc"));
   $("slT").addEventListener("input", () => applyEdit("T"));
   $("swGal").addEventListener("change", () => applyEdit("gal"));
+  $("slPH").addEventListener("input", () => applyEdit("pH")); $("cbPH").addEventListener("change", () => applyEdit("pH"));
+  $("slDO").addEventListener("input", () => applyEdit("DO")); $("cbDO").addEventListener("change", () => applyEdit("DO"));
   $("prevDay").addEventListener("click", () => selectDay(sel - 1));
   $("nextDay").addEventListener("click", () => selectDay(sel + 1));
   function setScope(s) { scope = s; $("scopeOne").setAttribute("aria-pressed", s === "one"); $("scopeOn").setAttribute("aria-pressed", s === "on"); syncEditor(); }
@@ -550,10 +610,14 @@ table.log th.n { text-align: right; }
   $("unpin").addEventListener("click", () => { comp = null; $("unpin").hidden = true; render(); });
   $("showReal").addEventListener("change", render);
   function compLabel() {
-    const edited = steps.some((s, d) => !eq(s.feed_pct, base[d].feed_pct) || !eq(s.glucose_target, base[d].glucose_target) || !!s.galplus !== !!base[d].galplus || !eq(s.temperature, base[d].temperature));
-    return edited ? recipe + " (edited)" : recipe;
+    return isEdited() ? recipe + " (edited)" : recipe;
   }
   function clampNum(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+  function isEdited() {
+    return steps.some((s, d) => !eq(s.feed_pct, base[d].feed_pct) || !eq(s.glucose_target, base[d].glucose_target) || !!s.galplus !== !!base[d].galplus
+      || !eq(s.temperature, base[d].temperature) || !eq(s.pH, base[d].pH) || !eq(s.DO, base[d].DO))
+      || Math.abs(+$("slSeedX").value - 0.4) > 1e-9 || Math.abs(+$("slSeedV").value - 97.5) > 1e-9;
+  }
 
   // ------------------------------------------------ simulate + render
   function run() {
@@ -562,7 +626,8 @@ table.log th.n { text-align: right; }
     result.support.forEach((s, d) => {
       const el = $("b" + d); el.className = "basis " + s;
       el.innerHTML = `<i class="dot ${s}"></i>${s === "data" ? "data" : s === "prior" ? "prior" : "extrap."}`;
-      el.title = s === "data" ? "Inputs within the real runs" : s === "prior" ? "Temperature effect from literature, not D2 data" : "Feed or glucose outside the tested range";
+      el.innerHTML = `<i class="dot ${s}"></i>`;
+      el.title = s === "data" ? "Within real data: inputs inside the real runs" : s === "prior" ? "Literature prior: temperature, pH or DO effect not covered by real runs" : "Outside tested range: feed or glucose beyond the real runs";
     });
     render();
   }
@@ -575,27 +640,36 @@ table.log th.n { text-align: right; }
       delta = `<span class="delta ${dv >= 0 ? "up" : "down"}">${dv >= 0 ? "+" : ""}${dv.toFixed(0)}% vs ${comp.label}</span>`;
     }
     const nd = result.support.length;
-    const basisTxt = k.nExtrapol ? `${k.nExtrapol} day${k.nExtrapol > 1 ? "s" : ""} outside tested range` : k.nPrior ? `${k.nPrior} day${k.nPrior > 1 ? "s" : ""} use temperature prior` : `All ${nd} days within real data`;
+    const basisTxt = k.nExtrapol ? `${k.nExtrapol} day${k.nExtrapol > 1 ? "s" : ""} outside tested range` : k.nPrior ? `${k.nPrior} day${k.nPrior > 1 ? "s" : ""} use a literature prior` : `All ${nd} days within real data`;
+    // measured values of the real replicates of this recipe (only when the plan is the unedited recipe)
+    const reps = (M.real[recipe] || []).filter(r => r.day[r.day.length - 1] >= 10);
+    const measured = (v, sc, dec) => {
+      if (isEdited() || !reps.length) return "";
+      const vals = reps.map(r => { const ok = r[v].map((q, i) => [r.day[i], q]).filter(p => p[1] != null); return ok.length ? ok[ok.length - 1][1] * sc : null; }).filter(q => q != null);
+      if (!vals.length) return "";
+      const lo = Math.min(...vals), hi = Math.max(...vals);
+      return `<span class="meas">Measured: <b>${vals.length > 1 ? lo.toFixed(dec) + "–" + hi.toFixed(dec) : lo.toFixed(dec)}</b> (${vals.length} real run${vals.length > 1 ? "s" : ""}, day ${Math.min(...reps.map(r => r.day[r.day.length - 1])).toFixed(0)}+)</span>`;
+    };
     const basisCls = k.nExtrapol ? "extrapol" : k.nPrior ? "prior" : "data";
     $("kpis").innerHTML = `
-      <div class="kpi"><span class="label">Final titer · day 11</span><span class="v">${fmt(k.titer / 1000, 2)}<small>g/L</small></span>
-        <span class="sub">range ${fmt(k.titer_lo / 1000, 2)}–${fmt(k.titer_hi / 1000, 2)}${delta ? " · " + delta : ""}</span></div>
-      <div class="kpi"><span class="label">Peak VCD</span><span class="v">${fmt(k.peakVCD, 1)}<small>10⁶/mL</small></span>
+      <div class="kpi"><span class="label">Predicted titer · day 11</span><span class="v">${fmt(k.titer / 1000, 2)}<small>g/L</small></span>
+        <span class="sub">80% range ${fmt(k.titer_lo / 1000, 2)}–${fmt(k.titer_hi / 1000, 2)}${delta ? " · " + delta : ""}</span>${measured("titer", 0.001, 2)}</div>
+      <div class="kpi"><span class="label">Predicted peak VCD</span><span class="v">${fmt(k.peakVCD, 1)}<small>10⁶/mL</small></span>
         <span class="sub">IVCD ${fmt(k.ivcd, 0)} 10⁶ cell·d/mL</span></div>
-      <div class="kpi"><span class="label">Viability · day 11</span><span class="v">${fmt(k.viability, 0)}<small>%</small></span>
-        <span class="sub">range ${fmt(k.viability_lo, 0)}–${fmt(k.viability_hi, 0)}%</span></div>
+      <div class="kpi"><span class="label">Predicted viability · day 11</span><span class="v">${fmt(k.viability, 0)}<small>%</small></span>
+        <span class="sub">80% range ${fmt(k.viability_lo, 0)}–${fmt(k.viability_hi, 0)}%</span>${measured("viability", 1, 0)}</div>
       <div class="kpi basis-kpi"><span class="label">Basis of this prediction</span>
         <span class="v basis ${basisCls}" style="text-transform:none;letter-spacing:0;font-size:1rem"><i class="dot ${basisCls}"></i>${basisTxt}</span>
         <span class="sub">${k.nData} of ${nd} days within real data</span></div>`;
     const showReal = $("showReal").checked && (M.real[recipe] || []).length;
-    $("seriesLegend").innerHTML = `<span><i class="sw" style="border-color:var(--accent)"></i>This plan</span>
-      <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range</span>
+    $("seriesLegend").innerHTML = `<span><i class="sw" style="border-color:var(--accent)"></i>Predicted · this plan</span>
+      <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range of the prediction</span>
       ${comp ? `<span><i class="sw dash" style="border-color:var(--comp)"></i>${comp.label}</span>` : ""}
-      ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Real runs · ${recipe}</span>` : ""}`;
+      ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Measured · ${(M.real[recipe] || []).length} real runs of ${recipe}</span>` : ""}`;
     drawChart($("ch-titer"), "titer", 250);
     ["VCD", "viability", "glucose", "lactate"].forEach(v => drawChart($("ch-" + v), v, 170));
     // table view
-    let h = "<table><thead><tr><th>Day</th>" + Object.keys(VARS).map(v => `<th>${VARS[v].name} (${VARS[v].unit})</th>`).join("") + "</tr></thead><tbody>";
+    let h = "<table><thead><tr><th>Day</th>" + Object.keys(VARS).map(v => `<th>Predicted ${VARS[v].name.toLowerCase()} (${VARS[v].unit})</th>`).join("") + "</tr></thead><tbody>";
     result.rows.forEach(r => { h += `<tr><td>${r.day}</td>` + Object.keys(VARS).map(v => `<td>${fmt(r[v] * VARS[v].scale, VARS[v].dec)}</td>`).join("") + "</tr>"; });
     $("valTable").innerHTML = h + "</tbody></table>";
   }
@@ -608,16 +682,19 @@ table.log th.n { text-align: right; }
     // opt: {title, unit, height, xmax, series:[{type:'band'|'line'|'dash'|'pts', xs, ys, lo, hi, color, label}], dec, ymaxCap}
     host.innerHTML = "";
     const head = document.createElement("div"); head.className = "ctitle";
-    head.innerHTML = `<h3>${opt.title}</h3><span class="unit">${opt.unit}</span>`; host.appendChild(head);
     const W = Math.max(host.clientWidth, 260), H = opt.height, pl = 40, pr = 10, pt = 8, pb = 22;
-    let ymax = 0;
+    let ymax = 0, ymin = 0, over = false;
     opt.series.forEach(s => (s.hi || s.ys).forEach(v => { if (v != null && isFinite(v)) ymax = Math.max(ymax, v); }));
-    ymax = opt.ymaxCap ? Math.min(niceMax(ymax * 1.05), opt.ymaxCap) : niceMax(ymax * 1.05);
-    const x = v => pl + (W - pl - pr) * v / opt.xmax, y = v => pt + (H - pt - pb) * (1 - Math.min(v, ymax) / ymax);
+    if (opt.fixed) {               // fixed axis: the scale never moves while inputs change
+      over = opt.series.some(s => s.type !== "band" && s.ys.some(v => v != null && v > opt.fixed[1] * 1.001));
+      ymin = opt.fixed[0]; ymax = opt.fixed[1];
+    } else ymax = opt.ymaxCap ? Math.min(niceMax(ymax * 1.05), opt.ymaxCap) : niceMax(ymax * 1.05);
+    head.innerHTML = `<h3>${opt.title}</h3><span class="unit">${over ? `<span class="off">▲ above ${ymax} off scale · </span>` : ""}${opt.err ? `<span class="err">${opt.err} · </span>` : ""}${opt.unit}</span>`; host.appendChild(head);
+    const x = v => pl + (W - pl - pr) * v / opt.xmax, y = v => pt + (H - pt - pb) * (1 - (Math.min(Math.max(v, ymin), ymax) - ymin) / (ymax - ymin));
     const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": opt.title + " over culture days" });
     const ax = svgEl("g", { class: "axis" });
     for (let i = 0; i <= 4; i++) {
-      const v = ymax * i / 4, yy = y(v);
+      const v = ymin + (ymax - ymin) * i / 4, yy = y(v);
       ax.appendChild(svgEl("line", { x1: pl, x2: W - pr, y1: yy, y2: yy, class: i === 0 ? "baseline" : "gridline" }));
       const t = svgEl("text", { x: pl - 6, y: yy + 3.5, "text-anchor": "end" }); t.textContent = +v.toFixed(opt.dec > 1 ? 2 : 1) + ""; ax.appendChild(t);
     }
@@ -655,10 +732,10 @@ table.log th.n { text-align: right; }
         if (s.type === "band" || s.type === "pts") return;
         const i = s.xs.findIndex(v => Math.abs(v - d) < 0.5); if (i < 0) return;
         const band = s.band ? ` <span style="color:var(--muted)">(${s.band.lo[i].toFixed(opt.dec)}–${s.band.hi[i].toFixed(opt.dec)})</span>` : "";
-        html += `<div><span style="color:${s.color}">●</span> ${s.label}: <span class="tv">${s.ys[i].toFixed(opt.dec)}</span>${band}</div>`;
+        html += `<div><span style="color:${s.color}">●</span> ${s.label}: <span class="tv">${s.ys[i].toFixed(opt.dec)}</span>${band ? ` <span style="color:var(--muted)">80% range</span>` + band : ""}</div>`;
       });
       const realHere = opt.series.filter(s => s.type === "pts").flatMap(s => s.xs.map((v, i) => [v, s.ys[i]]).filter(p => p[1] != null && Math.abs(p[0] - d) < 0.5).map(p => p[1]));
-      if (realHere.length) html += `<div><span style="color:${cssv("--real")}">●</span> Real: <span class="tv">${realHere.map(v => v.toFixed(opt.dec)).join(", ")}</span></div>`;
+      if (realHere.length) html += `<div><span style="color:${cssv("--real")}">●</span> Measured: <span class="tv">${realHere.map(v => v.toFixed(opt.dec)).join(", ")}</span> <span style="color:var(--muted)">(${realHere.length} real run${realHere.length > 1 ? "s" : ""})</span></div>`;
       tip.innerHTML = html; tip.hidden = false;
       const hx = x(d) * r.width / W; const tw = tip.offsetWidth;
       tip.style.left = Math.min(Math.max(hx + 12, 0), host.clientWidth - tw) + "px";
@@ -674,8 +751,8 @@ table.log th.n { text-align: right; }
     const series = [{ type: "band", xs, lo, hi, color: cssv("--accent") }];
     if ($("showReal").checked) (M.real[recipe] || []).forEach(rr => series.push({ type: "pts", xs: rr.day, ys: rr[v].map(q => q == null ? null : q * sc), color: cssv("--real") }));
     if (comp) series.push({ type: "dash", xs: comp.res.rows.map(r => r.day), ys: comp.res.rows.map(r => r[v] * sc), color: cssv("--comp"), label: comp.label });
-    series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "This plan", band: { lo, hi } });
-    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, ymaxCap: cfg.max });
+    series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "Predicted", band: { lo, hi } });
+    lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v] });
   }
 
   // ------------------------------------------------ shared helpers
@@ -687,6 +764,29 @@ table.log th.n { text-align: right; }
   function trainedIn(id) { const h = H.find(x => x.trained_after === id); return h ? h : null; }
 
   // ------------------------------------------------ model view: accuracy (fixed benchmark)
+  function buildDataVsModel() {
+    const sp = M.spread || {}, bk = M.bench.known, bu = M.bench.unseen;
+    const rowsD = [["Titer", "titer", "%", bk["titer_MAPE_%"], bu["titer_MAPE_%"]], ["Viable cell density", "VCD", "%", bk["VCD_MAPE_%"], bu["VCD_MAPE_%"]],
+      ["Viability", "viability", "pts", bk.viability_MAE, bu.viability_MAE], ["Glucose", "glucose", "g/L", bk.glucose_MAE, bu.glucose_MAE], ["Lactate", "lactate", "g/L", bk.lactate_MAE, bu.lactate_MAE]];
+    const f = (v, u) => v == null ? "–" : (u === "%" ? v.toFixed(1) + "%" : "±" + v.toFixed(u === "pts" ? 1 : 2) + " " + u);
+    let h = `<thead><tr><th>Output</th><th>Between real replicates</th><th>Model error, known recipes</th><th>Model error, unseen recipe</th></tr></thead><tbody>`;
+    rowsD.forEach(([n, k, u, a, b]) => { h += `<tr><td>${n}</td><td>${f(sp[k], u)}</td><td>${f(a, u)}</td><td>${f(b, u)}</td></tr>`; });
+    $("dvmTable").innerHTML = h + "</tbody>";
+    $("dvmNote").textContent = "Replicate spread: typical absolute difference of one replicate from the mean of its recipe at the same sampling day (titer and cell density as % of the mean). Model error: mean error over all sampled days of the benchmark runs, predicted from day 0. Where the model error is well above the replicate spread, the model, not the measurement, limits accuracy.";
+  }
+
+  function buildAxes() {
+    let h = `<span class="label">Output</span><span class="label">Min</span><span class="label">Max</span>`;
+    Object.entries(VARS).forEach(([k, v]) => { h += `<span>${v.name} <span class="note">${v.unit}</span></span><input type="number" id="ax-${k}-min" value="${v.ymin}" step="any" aria-label="${v.name} axis minimum"><input type="number" id="ax-${k}-max" value="${v.ymax}" step="any" aria-label="${v.name} axis maximum">`; });
+    $("axesGrid").innerHTML = h;
+    Object.keys(VARS).forEach(k => ["min", "max"].forEach(e => $(`ax-${k}-${e}`).addEventListener("change", () => {
+      const a = +$(`ax-${k}-min`).value, b = +$(`ax-${k}-max`).value;
+      if (isFinite(a) && isFinite(b) && b > a) { VARS[k].ymin = a; VARS[k].ymax = b; saveAxes(); redraw(); }
+    })));
+  }
+  function saveAxes() { try { localStorage.setItem("twin-axes", JSON.stringify(Object.fromEntries(Object.entries(VARS).map(([k, v]) => [k, [v.ymin, v.ymax]])))); } catch (e) {} }
+  $("axesReset").addEventListener("click", () => { Object.entries(AXIS_DEFAULT).forEach(([k, [a, b]]) => { VARS[k].ymin = a; VARS[k].ymax = b; }); saveAxes(); buildAxes(); redraw(); });
+
   function buildAccuracy() {
     const mk = M.bench.known, mu = M.bench.unseen;
     const rowsS = [["Titer error, all days", pct(mk["titer_MAPE_%"]), pct(mu["titer_MAPE_%"])],
@@ -709,7 +809,7 @@ table.log th.n { text-align: right; }
     const r = M.bench.runs[+$("fitRun").value];
     ["titer", "VCD"].forEach(v => {
       const sc = VARS[v].scale;
-      lineChart($("fit-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 170, xmax: DAYS, dec: VARS[v].dec, series: [
+      lineChart($("fit-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 170, xmax: DAYS, dec: VARS[v].dec, fixed: [VARS[v].ymin, VARS[v].ymax], series: [
         { type: "pts", xs: r.day, ys: r.obs[v].map(q => q == null ? null : q * sc), color: cssv("--ink") },
         { type: "line", xs: r.day, ys: r.pred[v].map(q => q * sc), color: cssv("--accent"), label: "Twin" }] });
     });
@@ -789,6 +889,11 @@ table.log th.n { text-align: right; }
     if (inp.some(x => (x.feed_pct ?? 0) > 5)) warn.push("Feed above 5% v/v is outside the range the model was trained on.");
     if (inp.some(x => x.glucose_target && (x.glucose_target < 2 || x.glucose_target > 8))) warn.push("A glucose target outside 2–8 g/L is outside the trained range.");
     if (inp.some(x => x.temperature != null && x.temperature !== 37)) warn.push("Temperature differs from 37 °C: the model uses a literature prior there.");
+    if (p.header.includes("pH") && r.some(x => x.pH != null && (x.pH < 6 || x.pH > 8))) err.push("pH outside 6.0–8.0.");
+    if (p.header.includes("DO") && r.some(x => x.DO != null && (x.DO < 0 || x.DO > 200))) err.push("DO outside 0–200 % air saturation.");
+    if (p.header.includes("pH") && r.some(x => x.pH != null)) warn.push("pH given: its effect comes from literature priors (no varied-pH runs yet).");
+    if (p.header.includes("DO") && r.some(x => x.DO != null)) warn.push("DO given: its effect comes from literature priors and one real low-DO run.");
+    if (p.header.includes("agitation") && r.some(x => x.agitation != null)) warn.push("Agitation is stored for future models but not used yet.");
     ["titer", "glucose", "viability"].forEach(c => { if (r.filter(x => x[c] != null).length < 3) warn.push(`Fewer than 3 ${c} measurements: little to learn from.`); });
     return { err, warn };
   }
@@ -827,7 +932,7 @@ table.log th.n { text-align: right; }
     const rows = current.result.rows, xs = rows.map(r => r.day), xmax = Math.max(DAYS, Math.ceil(xs[xs.length - 1]));
     ["titer", "VCD", "viability", "glucose"].forEach(v => {
       const sc = VARS[v].scale;
-      lineChart($("pf-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 165, xmax, dec: VARS[v].dec, ymaxCap: VARS[v].max, series: [
+      lineChart($("pf-" + v), { title: VARS[v].name, unit: VARS[v].unit, height: 165, xmax, dec: VARS[v].dec, fixed: [VARS[v].ymin, VARS[v].ymax], series: [
         { type: "band", xs, lo: rows.map(r => r[v + "_lo"] * sc), hi: rows.map(r => r[v + "_hi"] * sc), color: cssv("--accent") },
         { type: "pts", xs, ys: current.rows.map(r => r[v] == null ? null : r[v] * sc), color: cssv("--ink") },
         { type: "line", xs, ys: rows.map(r => r[v] * sc), color: cssv("--accent"), label: "Predicted", band: { lo: rows.map(r => r[v + "_lo"] * sc), hi: rows.map(r => r[v + "_hi"] * sc) } }] });
@@ -930,7 +1035,7 @@ table.log th.n { text-align: right; }
   function buildModelCharts() {}
   window.addEventListener("hashchange", showView);
 
-  buildRows(); setRecipe("STD"); buildAccuracy(); buildModel(); renderLog(); showView();
+  buildRows(); buildAxes(); setRecipe("STD"); buildAccuracy(); buildModel(); buildDataVsModel(); renderLog(); showView();
   let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(redraw, 120); }).observe(document.querySelector(".wrap"));
   const mq = window.matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener && mq.addEventListener("change", redraw);
   new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });

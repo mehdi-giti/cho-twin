@@ -22,6 +22,7 @@ from .data import build
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STORE = os.path.join(ROOT, "store"); REG = os.path.join(ROOT, "registry")
 COLS = ["time_h", "VCD", "viability", "glucose", "lactate", "titer", "feed_pct", "glucose_target", "galplus", "temperature"]
+OPTIONAL = ["pH", "DO", "agitation"]   # set-points from this sample to the next; blank = not controlled / not recorded
 BENCHMARK = ["D2_HIPp_R1", "D2_HIPp_R2", "D2_HIPp_R3", "D2_STD_R1", "D2_LoG_R1", "D2_HiF_R1"]   # never trained on
 W_REAL = 5.0
 
@@ -83,13 +84,15 @@ def batch_from(df, run_ids):
     gs = [df[df.run_id == r].sort_values("time_h") for r in run_ids]
     J = max(len(g) for g in gs) - 1; R = len(gs)
     b = dict(y0=np.zeros((R, 9)), B=np.full((R, J + 1), np.nan), feed=np.zeros((R, J)), glc=np.full((R, J), np.nan),
-             gal=np.zeros((R, J)), T=np.full((R, J), 37.0), run_ids=list(run_ids))
+             gal=np.zeros((R, J)), T=np.full((R, J), 37.0), pH=np.full((R, J), np.nan), DO=np.full((R, J), np.nan), run_ids=list(run_ids))
     o = np.full((R, J + 1, 5), np.nan)
     for i, g in enumerate(gs):
         n = len(g); b["B"][i, :n] = g.time_h.values
         b["feed"][i, :n - 1] = np.nan_to_num(g.feed_pct.values[:-1]); b["glc"][i, :n - 1] = g.glucose_target.values[:-1]
         b["gal"][i, :n - 1] = np.nan_to_num(g.galplus.values[:-1]) * mech.GAL_PER_EVENT
         b["T"][i, :n - 1] = np.where(np.isnan(g.temperature.values[:-1]), 37.0, g.temperature.values[:-1])
+        for c in ("pH", "DO"):
+            if c in g.columns: b[c][i, :n - 1] = pd.to_numeric(g[c], errors="coerce").values[:-1]
         x0 = g.VCD.iloc[0]; v0 = g.viability.iloc[0] if not np.isnan(g.viability.iloc[0]) else 97.0
         g0 = g.glucose.iloc[0] if not np.isnan(g.glucose.iloc[0]) else 8.0
         l0 = g.lactate.iloc[0] if not np.isnan(g.lactate.iloc[0]) else 0.15
@@ -120,8 +123,13 @@ def validate(df):
     miss = [c for c in COLS if c not in df.columns]
     if miss:
         return [f"missing columns: {', '.join(miss)}"], warnings
-    for c in COLS:
+    for c in COLS + [c for c in OPTIONAL if c in df.columns]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
+    if "pH" in df.columns and ((df.pH.dropna() < 6.0) | (df.pH.dropna() > 8.0)).any(): errors.append("pH outside 6.0-8.0")
+    if "DO" in df.columns and ((df.DO.dropna() < 0) | (df.DO.dropna() > 200)).any(): errors.append("DO outside 0-200 % air saturation")
+    if "pH" in df.columns and df.pH.notna().any(): warnings.append("pH given: the model uses literature priors for pH effects (no varied-pH runs yet)")
+    if "DO" in df.columns and df.DO.notna().any(): warnings.append("DO given: the model uses literature priors and one DO-failure pair for DO effects")
+    if "agitation" in df.columns and df.agitation.notna().any(): warnings.append("agitation is stored for future models but not used yet (no data that separate its effect)")
     t = df.time_h.values
     if len(df) < 4: errors.append("at least 4 samples are needed")
     if abs(t[0]) > 1: errors.append("first sample must be at time 0 h (inoculation)")
@@ -236,7 +244,8 @@ def scenario(model, steps):
     n = len(steps)
     b = dict(y0=np.array([[0.4, 0.4 * 2.5 / 97.5, 8.0, 0.15, 0, 0, 1, 1, 0]]), B=np.arange(n + 1, dtype=float)[None] * 24,
              feed=np.array([[s["feed_pct"] for s in steps]]), glc=np.array([[np.nan if s["glucose_target"] is None else s["glucose_target"] for s in steps]]),
-             gal=np.array([[mech.GAL_PER_EVENT if s["galplus"] else 0 for s in steps]]), T=np.array([[s["temperature"] for s in steps]]))
+             gal=np.array([[mech.GAL_PER_EVENT if s["galplus"] else 0 for s in steps]]), T=np.array([[s["temperature"] for s in steps]]),
+             pH=np.array([[s.get("pH", np.nan) for s in steps]], float), DO=np.array([[s.get("DO", np.nan) for s in steps]], float))
     return rollout(model, b)[0]
 
 
@@ -255,6 +264,8 @@ def direction_checks(model):
     s33 = protocol("STD")
     for d in range(5, 11): s33[d]["temperature"] = 33.0
     S["T33"] = scenario(model, s33)
+    lowdo = protocol("STD"); [st.update(DO=5.0) for st in lowdo]; S["DO5"] = scenario(model, lowdo)
+    hiph = protocol("STD"); [st.update(pH=7.3) for st in hiph]; S["pH73"] = scenario(model, hiph)
     f = lambda n, k: S[n][-1, k]
     return [
         dict(check="Glucose target 4 vs 8 lowers final titer", ok=bool(f("LoG", 4) < f("STD", 4)), evidence="data"),
@@ -262,7 +273,9 @@ def direction_checks(model):
         dict(check="Gal+ extends viability under glucose limitation", ok=bool(f("LoG+", 1) > f("LoG", 1)), evidence="data"),
         dict(check="Daily feeding gives lower titer than 48 h feeding", ok=bool(f("HiF", 4) < f("STD", 4)), evidence="data"),
         dict(check="33 degC shift lowers peak VCD", ok=bool(S["T33"][:, 0].max() < S["STD"][:, 0].max()), evidence="prior"),
-        dict(check="33 degC shift extends viability", ok=bool(f("T33", 1) > f("STD", 1)), evidence="prior")]
+        dict(check="33 degC shift extends viability", ok=bool(f("T33", 1) > f("STD", 1)), evidence="prior"),
+        dict(check="DO held at 5% lowers peak VCD", ok=bool(S["DO5"][:, 0].max() < S["STD"][:, 0].max()), evidence="prior"),
+        dict(check="pH 7.3 raises peak lactate", ok=bool(S["pH73"][:, 3].max() > S["STD"][:, 3].max()), evidence="prior")]
 
 
 def band_coverage(pred, o, b, band):
@@ -271,6 +284,9 @@ def band_coverage(pred, o, b, band):
     out = {}
     for k, v in enumerate(mech.OUT):
         t = b["B"][:, 1:] / 24; m = ~np.isnan(o[:, 1:, k]) & ~np.isnan(t)
+        if v == "lactate" and "lactate_abs" in band:
+            z = np.abs(o[:, 1:, k][m] - pred[:, 1:, k][m]) / np.minimum(1, np.sqrt(t[m] / 3)); out[v] = float(100 * np.mean(z <= band["lactate_abs"]))
+            continue
         z = np.abs(TR[k](o[:, 1:, k][m]) - TR[k](pred[:, 1:, k][m])) / np.sqrt(t[m])
         out[v] = float(100 * np.mean(z <= band[v]))
     return out
@@ -357,7 +373,7 @@ def import_batch(path_or_text, batch_id=None, refit_mechanistic=False, recipe=No
     if batch_id in set(idx.run_id): raise ValueError(f"batch {batch_id} is already in the store")
     champ_v = champion(); champ = load_version(champ_v)
     # 2. predict first
-    df_new = df_new[COLS].copy(); df_new.insert(0, "run_id", batch_id)
+    df_new = df_new[COLS + [c for c in OPTIONAL if c in df_new.columns]].copy(); df_new.insert(0, "run_id", batch_id)
     b, o = batch_from(df_new, [batch_id]); pred = rollout(champ, b)
     pf = dict(batch_id=batch_id, model_version=champ_v, date=f"{datetime.date.today()}", recipe=recipe or meta.get("recipe", ""),
               errors=errors_of(pred, o, b), day=[float(x) / 24 for x in b["B"][0]],
@@ -449,10 +465,28 @@ def export_web(out_path):
             history.append({k: rp.get(k) for k in ("version", "parent", "date", "trained_after", "mechanistic_refit", "n_train_runs", "n_real_train_runs",
                                                    "median_abs_log_correction", "clip_rate", "promoted", "gate", "band_coverage", "direction_checks",
                                                    "benchmark_all", "benchmark_known", "benchmark_unseen")})
+    # typical spread between real replicates of the same recipe (deviation from the recipe mean at the same sample index)
+    spread = {}
+    reals = idx[(idx.kind == "real")]
+    for c in mech.OUT:
+        devs = []
+        for rec, g in reals.groupby("recipe"):
+            runs_ = [df[df.run_id == r].sort_values("time_h")[c].values for r in g.run_id]
+            if len(runs_) < 2: continue
+            n = min(len(x) for x in runs_); A = np.array([x[:n] for x in runs_], float)[:, 1:]
+            with __import__("warnings").catch_warnings():
+                __import__("warnings").simplefilter("ignore"); mu = np.nanmean(A, 0)
+            with np.errstate(all="ignore"):
+                d = np.abs(A - mu)
+                if c in ("VCD", "titer"):
+                    thr = 1.0 if c == "VCD" else 50
+                    d = np.where(mu > thr, 100 * d / mu, np.nan)
+            devs.append(d[~np.isnan(d)])
+        spread[c] = float(np.mean(np.concatenate(devs))) if devs else None
     pk = mech.NAMES + list(mech.PRIOR)
     out = dict(version=v, params={k: sig(m["P"][k]) for k in pk}, gal=mech.GAL_PER_EVENT, band=m["band"], models=models, real=real,
                bench=dict(runs=fits, known=m["report"]["benchmark_known"], unseen=m["report"]["benchmark_unseen"]),
-               history=history, prospective=json.load(open(os.path.join(STORE, "prospective.json"))), gates=GATES, template=TEMPLATE_CSV,
+               spread=spread, history=history, prospective=json.load(open(os.path.join(STORE, "prospective.json"))), gates=GATES, template=TEMPLATE_CSV,
                examples={f[:-4]: open(os.path.join(ROOT, "example_batches", f)).read() for f in sorted(os.listdir(os.path.join(ROOT, "example_batches")))},
                in_store=sorted(idx[idx.kind != "derived"].run_id.tolist()),
                rejected=[json.load(open(f)) for f in sorted(__import__("glob").glob(os.path.join(ROOT, "batches", "rejected", "*.json")))],

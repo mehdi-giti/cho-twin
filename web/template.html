@@ -283,6 +283,11 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 .tip .trow { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: baseline; }
 .tip .trow i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .tip .tgrp { color: var(--muted); font-size: 0.7rem; margin-top: 4px; }
+
+.viewsw { display: flex; align-items: center; gap: 10px; }
+.seg.big button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 15px; font-size: 0.86rem; font-weight: 500; }
+.seg.big button svg { width: 16px; height: 16px; }
+.seg.big button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -435,7 +440,13 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
       </section>
       <div class="panel charts">
         <div class="chart-head">
-          <div class="seg" role="group" aria-label="Chart view"><button id="cmCombined" aria-pressed="true">Combined</button><button id="cmSeparate" aria-pressed="false">Separate</button></div>
+          <div class="viewsw">
+            <span class="label" id="cvLabel">Chart view</span>
+            <div class="seg big" role="group" aria-labelledby="cvLabel">
+              <button id="cmCombined" aria-pressed="true" title="All series on one chart"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 13L5 8.5 8 10.5 14.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 11.5L6 11 9.5 6.5 14.5 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/></svg>Combined</button>
+              <button id="cmSeparate" aria-pressed="false" title="One chart per output, with 80% bands"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="5.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="1.5" y="9" width="5.8" height="5.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="8.7" y="9" width="5.8" height="5.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Separate</button>
+            </div>
+          </div>
           <label class="toggle"><input type="checkbox" id="showReal" checked> Measured real runs</label>
         </div>
         <div class="series-legend" id="seriesLegend"></div>

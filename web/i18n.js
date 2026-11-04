@@ -10,7 +10,7 @@
     "mAb (IgG1κ) · 20 mL fed-batch, 37 °C · hybrid model": "آنتی‌بادی تک‌دودمانی (IgG1κ) · کشت خوراک‌دهی‌شدهٔ ۲۰ میلی‌لیتری، 37 °C · مدل ترکیبی",
     "Plan a run": "طراحی کشت", "Batches": "بچ‌ها", "Model": "مدل",
     // run plan
-    "Combined": "ترکیبی", "Separate": "جداگانه", "Chart view": "نمای نمودار", "+ Add series…": "+ افزودن سری…", "Add series": "افزودن سری",
+    "Combined": "ترکیبی", "Separate": "جداگانه", "All series on one chart": "همهٔ سری‌ها در یک نمودار", "One chart per output, with 80% bands": "یک نمودار برای هر خروجی، با بازه‌های ۸۰٪", "Chart view": "نمای نمودار", "+ Add series…": "+ افزودن سری…", "Add series": "افزودن سری",
     "Inputs: step lines": "ورودی‌ها: خطوط پله‌ای", "Feed": "خوراک", "Fill with a real run…": "پر کردن با یک کشت واقعی…",
     "Every series has its own scale (axis limits above). Hover to read all values for one day. Prediction bands are shown in the separate view.": "هر سری مقیاس خود را دارد (حدود محورها در بالا). برای دیدن همهٔ مقادیر یک روز، نشانگر را روی نمودار ببرید. بازه‌های پیش‌بینی در نمای جداگانه نمایش داده می‌شوند.",
     // running batch

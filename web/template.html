@@ -8,6 +8,7 @@
 :root {
   --bg: #F3F4F5; --panel: #FFFFFF; --ink: #1A2027; --ink-2: #47525E; --muted: #78838F; --line: #DFE3E7; --grid: #ECEFF2;
   --accent: #A3195B; --accent-ink: #8E1450; --comp: #3A6EA8; --real: #5D6773;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
   --good: #2F7D5B; --good-tint: #CFE6DA; --trk-base: #DDE1E5; --prior-tint: #F1DFBF; --prior: #A86A0B; --extra: #C2410C; --edit-bg: #FBEAF1;
   --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -16,10 +17,12 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #111417; --panel: #1A1D21; --ink: #E6E9EC; --ink-2: #AEB6BF; --muted: #838D98; --line: #2B3036; --grid: #23282D;
   --accent: #E8587E; --accent-ink: #F08AA6; --comp: #5C93D6; --real: #98A2AD;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
   --good: #5FB98E; --good-tint: #24473A; --trk-base: #30363C; --prior-tint: #4A3C1E; --prior: #E0B04A; --extra: #F07B4A; --edit-bg: #3A1A27; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #111417; --panel: #1A1D21; --ink: #E6E9EC; --ink-2: #AEB6BF; --muted: #838D98; --line: #2B3036; --grid: #23282D;
   --accent: #E8587E; --accent-ink: #F08AA6; --comp: #5C93D6; --real: #98A2AD;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
   --good: #5FB98E; --good-tint: #24473A; --trk-base: #30363C; --prior-tint: #4A3C1E; --prior: #E0B04A; --extra: #F07B4A; --edit-bg: #3A1A27; color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -266,6 +269,20 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
 .sg-opt .num { font-family: var(--f-mono); font-size: 1.25rem; }
 .sg-opt .gain { font-size: 0.8rem; }
 .sg-opt.applied { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* combined chart */
+.chart-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.cchips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 6px; }
+.cchip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 14px; padding: 2px 4px 2px 9px; font-size: 0.8rem; background: var(--bg); }
+.cchip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.cchip .u { color: var(--muted); font-size: 0.72rem; }
+.cchip button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 0 4px; border-radius: 50%; }
+.cchip button:hover { color: var(--ink); background: var(--grid); }
+.cadd { font-size: 0.8rem; padding: 3px 6px; }
+#ch-combined .tip { min-width: 190px; }
+.tip .trow { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: baseline; }
+.tip .trow i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.tip .tgrp { color: var(--muted); font-size: 0.7rem; margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -418,13 +435,20 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
       </section>
       <div class="panel charts">
         <div class="chart-head">
-          <div class="series-legend" id="seriesLegend"></div>
+          <div class="seg" role="group" aria-label="Chart view"><button id="cmCombined" aria-pressed="true">Combined</button><button id="cmSeparate" aria-pressed="false">Separate</button></div>
           <label class="toggle"><input type="checkbox" id="showReal" checked> Measured real runs</label>
         </div>
+        <div class="series-legend" id="seriesLegend"></div>
         <details class="axes" id="axesBox"><summary>Axis limits (fixed, so the scale stays put while you change inputs)</summary>
           <div class="axes-grid" id="axesGrid"></div>
           <div class="row" style="margin-top:8px"><button class="btn small" id="axesReset">Reset to defaults</button><span class="note">Values above a limit show as ▲ off scale.</span></div>
         </details>
+        <div id="combinedBox">
+          <div class="cchips" id="cChips"></div>
+          <div class="chart" id="ch-combined"></div>
+          <p class="note" style="margin:4px 0 0">Every series has its own scale (axis limits above). Hover to read all values for one day. Prediction bands are shown in the separate view.</p>
+        </div>
+        <div id="separateBox" hidden>
         <div class="chart" id="ch-titer"></div>
         <div class="small-grid">
           <div class="chart" id="ch-VCD"></div>
@@ -433,6 +457,7 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
           <div class="chart" id="ch-lactate"></div>
         </div>
         <p class="note">Bands show the 80% range, calibrated on real runs the model never trained on; they widen the further ahead the twin predicts. Glucose is shown as sampled, before that day's feed.</p>
+        </div>
         <details class="tableview"><summary>Daily values as a table</summary><div class="tablewrap" id="valTable"></div></details>
       </div>
     </main>
@@ -860,8 +885,17 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
       <span><i class="sw band" style="background:color-mix(in srgb, var(--accent) 18%, transparent)"></i>80% range of the prediction</span>
       ${comp ? `<span><i class="sw dash" style="border-color:var(--comp)"></i>${comp.label}</span>` : ""}
       ${showReal ? `<span><i class="sw pt" style="background:var(--real)"></i>Measured · ${(M.real[recipe] || []).length} real runs of ${recipe}</span>` : ""}`;
-    drawChart($("ch-titer"), "titer", 250);
-    ["VCD", "viability", "glucose", "lactate"].forEach(v => drawChart($("ch-" + v), v, 170));
+    if (chartMode === "combined") {
+      $("seriesLegend").innerHTML = `<span><i class="sw" style="border-color:var(--ink-2)"></i>Predicted · this plan</span>
+        ${comp ? `<span><i class="sw dash" style="border-color:var(--ink-2)"></i>${esc(comp.label)}</span>` : ""}
+        ${showReal ? `<span><i class="sw pt" style="background:var(--ink-2)"></i>Measured · ${(M.real[recipe] || []).length} real runs of ${recipe}</span>` : ""}
+        ${live.on && k.nDone ? `<span><i class="sw pt" style="background:var(--ink);width:10px;height:10px"></i>Measured · this run</span>` : ""}
+        <span><i class="sw" style="border-color:var(--muted);border-top-style:dotted"></i>Inputs: step lines</span>`;
+      buildChips(); drawCombined($("ch-combined"));
+    } else {
+      drawChart($("ch-titer"), "titer", 250);
+      ["VCD", "viability", "glucose", "lactate"].forEach(v => drawChart($("ch-" + v), v, 170));
+    }
     // table view
     let h = "<table><thead><tr><th>Day</th>" + Object.keys(VARS).map(v => `<th>Predicted ${VARS[v].name.toLowerCase()} (${VARS[v].unit})</th>`).join("") + "</tr></thead><tbody>";
     result.rows.forEach(r => { h += `<tr><td>${r.day}</td>` + Object.keys(VARS).map(v => `<td>${fmt(r[v] * VARS[v].scale, VARS[v].dec)}</td>`).join("") + "</tr>"; });
@@ -953,6 +987,117 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
     if (comp) series.push({ type: "dash", xs: comp.res.rows.map(r => r.day), ys: comp.res.rows.map(r => r[v] * sc), color: cssv("--comp"), label: comp.label });
     series.push({ type: "line", xs, ys, color: cssv("--accent"), label: "Predicted", band: { lo, hi } });
     lineChart(host, { title: cfg.name, unit: cfg.unit, height: host.id === "ch-titer" ? 250 : 170, xmax: DAYS, series, dec: cfg.dec, fixed: [cfg.ymin, cfg.ymax], err: ERRTXT[v], today: live.on && result.k ? live.k : null });
+  }
+
+  // ------------------------------------------------ combined chart: all series on one time axis, one scale per series
+  const CSER = {
+    titer: { name: "Titer", unit: "g/L", col: "--s1", kind: "out" },
+    VCD: { name: "VCD", unit: "10⁶/mL", col: "--s2", kind: "out" },
+    viability: { name: "Viability", unit: "%", col: "--s3", kind: "out" },
+    glucose: { name: "Glucose", unit: "g/L", col: "--s4", kind: "out" },
+    lactate: { name: "Lactate", unit: "g/L", col: "--s5", kind: "out" },
+    temperature: { name: "Temperature", unit: "°C", col: "--s6", kind: "in", range: [30, 38], dec: 1 },
+    pH: { name: "pH", unit: "", col: "--s7", kind: "in", range: [6.5, 7.5], dec: 2 },
+    DO: { name: "DO", unit: "%", col: "--s8", kind: "in", range: [0, 100], dec: 0 },
+    feed_pct: { name: "Feed", unit: "% v/v", col: "--muted", kind: "in", range: [0, 10], dec: 1 }
+  };
+  let chartMode = "combined", cSel = ["titer", "VCD", "viability", "glucose", "lactate"];
+  try { const s = JSON.parse(localStorage.getItem("twin-combined") || "null"); if (s && Array.isArray(s.sel)) { cSel = s.sel.filter(k => CSER[k]); chartMode = s.mode === "separate" ? "separate" : "combined"; } } catch (e) {}
+  function saveCombined() { try { localStorage.setItem("twin-combined", JSON.stringify({ sel: cSel, mode: chartMode })); } catch (e) {} }
+  function setChartMode(m) {
+    chartMode = m; $("cmCombined").setAttribute("aria-pressed", m === "combined"); $("cmSeparate").setAttribute("aria-pressed", m === "separate");
+    $("combinedBox").hidden = m !== "combined"; $("separateBox").hidden = m === "combined"; saveCombined(); render();
+  }
+  $("cmCombined").addEventListener("click", () => setChartMode("combined"));
+  $("cmSeparate").addEventListener("click", () => setChartMode("separate"));
+  function cRange(k) { return CSER[k].kind === "out" ? [VARS[k].ymin, VARS[k].ymax] : CSER[k].range; }
+  function cDec(k) { return CSER[k].kind === "out" ? VARS[k].dec : CSER[k].dec; }
+  function buildChips() {
+    const add = Object.keys(CSER).filter(k => !cSel.includes(k));
+    $("cChips").innerHTML = cSel.map(k => `<span class="cchip"><i style="background:var(${CSER[k].col})"></i>${CSER[k].name}${CSER[k].unit ? ` <span class="u">${CSER[k].unit}</span>` : ""}<button type="button" data-rm="${k}" aria-label="Remove ${CSER[k].name}">×</button></span>`).join("")
+      + (add.length ? `<select class="cadd" id="cAdd" aria-label="Add series"><option value="">+ Add series…</option>${add.map(k => `<option value="${k}">${CSER[k].name}${CSER[k].kind === "in" ? " (input)" : ""}</option>`).join("")}</select>` : "");
+    $("cChips").querySelectorAll("button[data-rm]").forEach(b => b.addEventListener("click", () => { if (cSel.length > 1) { cSel = cSel.filter(k => k !== b.dataset.rm); saveCombined(); render(); } }));
+    if ($("cAdd")) $("cAdd").addEventListener("change", e => { if (e.target.value) { cSel.push(e.target.value); saveCombined(); render(); } });
+  }
+  function drawCombined(host) {
+    host.innerHTML = "";
+    const W0 = Math.max(host.clientWidth, 320), keys = cSel.slice(), axKeys = W0 < 640 ? keys.slice(0, 2) : keys;   // phones: axes for the first two series only
+    const AX = 46, nL = Math.ceil(axKeys.length / 2), nR = Math.floor(axKeys.length / 2);
+    const W = W0, H = W0 < 640 ? 320 : 380, pl = 10 + AX * nL, pr = 10 + AX * nR, pt = 14, pb = 26, X = DAYS;
+    const x = d => pl + (W - pl - pr) * d / X;
+    const yOf = k => { const [a, b] = cRange(k); return v => pt + (H - pt - pb) * (1 - (Math.min(Math.max(v, a), b) - a) / (b - a)); };
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, height: H, role: "img", "aria-label": "Combined chart: " + keys.map(k => CSER[k].name).join(", ") + " over culture days" });
+    const ax = svgEl("g", { class: "axis" });
+    for (let i = 0; i <= 4; i++) { const yy = pt + (H - pt - pb) * i / 4; ax.appendChild(svgEl("line", { x1: pl, x2: W - pr, y1: yy, y2: yy, class: i === 4 ? "baseline" : "gridline" })); }
+    for (let d = 0; d <= X; d += 1) { if (d % 2 && W < 900) continue; const tx = svgEl("text", { x: x(d), y: H - 8, "text-anchor": "middle" }); tx.textContent = d === 0 ? "day 0" : d; ax.appendChild(tx); }
+    // one axis per series: odd ones on the left (outward), even ones on the right
+    axKeys.forEach((k, i) => {
+      const left = i % 2 === 0, j = Math.floor(i / 2), xa = left ? pl - AX * j : W - pr + AX * j, [a, b] = cRange(k), c = cssv(CSER[k].col), dec = cDec(k);
+      const g = svgEl("g", {});
+      g.appendChild(svgEl("line", { x1: xa, x2: xa, y1: pt, y2: H - pb, stroke: c, "stroke-width": 1.5 }));
+      for (let q = 0; q <= 4; q++) { const v = a + (b - a) * (1 - q / 4), yy = pt + (H - pt - pb) * q / 4;
+        const tx = svgEl("text", { x: left ? xa - 4 : xa + 4, y: yy + 3.5, "text-anchor": left ? "end" : "start" }); tx.textContent = +v.toFixed(dec > 1 ? 2 : dec === 0 ? 0 : 1); g.appendChild(tx); }
+      const tx = left ? xa - 34 : xa + 34, ty = (pt + H - pb) / 2;
+      const ttl = svgEl("text", { x: tx, y: ty, "text-anchor": "middle", transform: `rotate(${left ? -90 : 90} ${tx} ${ty})`, fill: cssv("--ink-2"), "font-size": "11" });
+      const t1 = svgEl("tspan", {}); t1.textContent = CSER[k].name; ttl.appendChild(t1);
+      if (CSER[k].unit) { const t2 = svgEl("tspan", { fill: cssv("--muted") }); t2.textContent = " " + CSER[k].unit; ttl.appendChild(t2); }
+      g.appendChild(ttl); ax.appendChild(g);
+    });
+    svg.appendChild(ax);
+    const rows = result.rows, xs = rows.map(r => r.day);
+    const pathOf = (pts) => pts.map((p, i) => (i && pts[i - 1] ? "L" : "M") + p).join("");
+    keys.forEach(k => {
+      const y = yOf(k), c = cssv(CSER[k].col), s = CSER[k];
+      if (s.kind === "out") {
+        const sc = VARS[k].scale;
+        if ($("showReal").checked) (M.real[recipe] || []).forEach(rr => rr.day.forEach((dd, i) => { const q = rr[k][i]; if (q != null && dd <= X) svg.appendChild(svgEl("circle", { cx: x(dd), cy: y(q * sc), r: 2.4, fill: c, "fill-opacity": 0.45 })); }));
+        if (comp) svg.appendChild(svgEl("path", { d: comp.res.rows.map((r, i) => (i ? "L" : "M") + x(r.day) + "," + y(r[k] * sc)).join(""), fill: "none", stroke: c, "stroke-width": 1.5, "stroke-dasharray": "5 4", "stroke-opacity": 0.8 }));
+        svg.appendChild(svgEl("path", { d: rows.map((r, i) => (i ? "L" : "M") + x(r.day) + "," + y(r[k] * sc)).join(""), fill: "none", stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }));
+        const last = rows[rows.length - 1]; svg.appendChild(svgEl("circle", { cx: x(last.day), cy: y(last[k] * sc), r: 3.5, fill: c, stroke: cssv("--panel"), "stroke-width": 1.5 }));
+        if (live.on && result.k) live.meas.slice(0, live.k + 1).forEach((m, d) => { if (m[k] != null) svg.appendChild(svgEl("circle", { cx: x(d), cy: y(m[k] * sc), r: 4, fill: c, stroke: cssv("--ink"), "stroke-width": 1.5 })); });
+      } else if (k === "feed_pct") {
+        steps.forEach((st, d) => { const f = +st.feed_pct || 0; if (f > 0) svg.appendChild(svgEl("rect", { x: x(d) - 3, y: y(f), width: 6, height: H - pb - y(f), rx: 1.5, fill: c, "fill-opacity": 0.55 })); });
+      } else {
+        let dstr = "";
+        steps.forEach((st, d) => { const v = st[k]; if (v == null || v === "" || isNaN(+v)) return; dstr += `M${x(d)},${y(+v)}H${x(d + 1)}`; });
+        if (dstr) svg.appendChild(svgEl("path", { d: dstr, fill: "none", stroke: c, "stroke-width": 2, "stroke-dasharray": "1 3", "stroke-linecap": "round" }));
+      }
+    });
+    if (live.on && result.k) {
+      svg.appendChild(svgEl("line", { x1: x(live.k), x2: x(live.k), y1: pt, y2: H - pb, stroke: cssv("--ink-2"), "stroke-width": 1, "stroke-dasharray": "4 3" }));
+      const tl = svgEl("text", { x: x(live.k) + 4, y: pt + 10, fill: cssv("--ink-2"), "font-size": "10.5" }); tl.textContent = "today"; svg.appendChild(tl);
+    }
+    // hover: crosshair + markers + one tooltip with every visible series
+    const cross = svgEl("line", { y1: pt, y2: H - pb, stroke: cssv("--muted"), "stroke-width": 1, "stroke-dasharray": "2 3", visibility: "hidden" }); svg.appendChild(cross);
+    const marks = svgEl("g", { visibility: "hidden" }); svg.appendChild(marks);
+    const hit = svgEl("rect", { x: pl, y: pt, width: W - pl - pr, height: H - pt - pb, fill: "transparent" }); svg.appendChild(hit);
+    host.appendChild(svg);
+    const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; host.appendChild(tip);
+    function move(ev) {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      const d = Math.round(Math.min(Math.max((px - pl) / (W - pl - pr) * X, 0), X));
+      cross.setAttribute("x1", x(d)); cross.setAttribute("x2", x(d)); cross.setAttribute("visibility", "visible");
+      marks.innerHTML = ""; marks.setAttribute("visibility", "visible");
+      let h = `<b>Day ${d}</b>`, hin = "";
+      keys.forEach(k => {
+        const s = CSER[k], c = cssv(s.col), dec = cDec(k), y = yOf(k);
+        if (s.kind === "out") {
+          const v = rows[d][k] * VARS[k].scale; marks.appendChild(svgEl("circle", { cx: x(d), cy: y(v), r: 4, fill: c, stroke: cssv("--panel"), "stroke-width": 1.5 }));
+          const cv = comp ? ` <span style="color:var(--muted)">(${esc(comp.label)} ${(comp.res.rows[d][k] * VARS[k].scale).toFixed(dec)})</span>` : "";
+          const mv = live.on && result.k && d <= live.k && live.meas[d][k] != null ? ` <span style="color:var(--muted)">measured ${(live.meas[d][k] * VARS[k].scale).toFixed(dec)}</span>` : "";
+          h += `<div class="trow"><i style="background:${c}"></i><span>${s.name}</span><span class="tv">${v.toFixed(dec)} ${s.unit}${cv}${mv}</span></div>`;
+        } else if (d < X) {
+          const v = steps[d][k]; const txv = v == null || v === "" ? "–" : (+v).toFixed(dec) + (s.unit ? " " + s.unit : "");
+          hin += `<div class="trow"><i style="background:${c}"></i><span>${s.name}</span><span class="tv">${txv}</span></div>`;
+        }
+      });
+      if (hin) h += `<div class="tgrp">Inputs, day ${d}</div>` + hin;
+      tip.innerHTML = h; tip.hidden = false;
+      const hx = x(d) * r.width / W, tw = tip.offsetWidth;
+      tip.style.left = (hx + 14 + tw > host.clientWidth ? Math.max(hx - tw - 14, 0) : hx + 14) + "px"; tip.style.top = "8px";
+    }
+    hit.addEventListener("mousemove", move); hit.addEventListener("touchstart", e => move(e.touches[0]), { passive: true });
+    hit.addEventListener("mouseleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); marks.setAttribute("visibility", "hidden"); });
   }
 
   // ------------------------------------------------ shared helpers
@@ -1254,6 +1399,8 @@ table.days tbody tr.past td.day::after { content: " ✓"; color: var(--good); }
   }
   $("langBtn").addEventListener("click", () => { lang = lang === "fa" ? "en" : "fa"; try { localStorage.setItem("twin-lang", lang); } catch (e) {} applyLang(); redraw(); });
 
+  $("cmCombined").setAttribute("aria-pressed", chartMode === "combined"); $("cmSeparate").setAttribute("aria-pressed", chartMode === "separate");
+  $("combinedBox").hidden = chartMode !== "combined"; $("separateBox").hidden = chartMode === "combined";
   buildRows(); buildAxes(); setRecipe("STD"); buildAccuracy(); buildModel(); buildDataVsModel(); renderLog(); showView();
   if (window.I18N) { I18N.start(); applyLang(); }
   let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(redraw, 120); }).observe(document.querySelector(".wrap"));
